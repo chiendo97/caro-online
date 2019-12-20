@@ -4,8 +4,6 @@ import (
 	"helloworld/caro/game"
 	s "helloworld/caro/socket"
 	"log"
-
-	"github.com/gorilla/websocket"
 )
 
 type Hub struct {
@@ -32,14 +30,6 @@ func InitHub() Hub {
 		unregister: make(chan *s.Socket),
 
 		done: make(chan int),
-	}
-}
-
-func InitSocket(conn *websocket.Conn, hub *Hub) s.Socket {
-	return s.Socket{
-		Conn:    conn,
-		Hub:     hub,
-		Message: make(chan s.Message),
 	}
 }
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"helloworld/caro/socket"
 	"log"
 	"net/http"
 
@@ -29,7 +30,7 @@ func createHubHandler(w http.ResponseWriter, r *http.Request) {
 
 	hubs[key] = &hub
 
-	var s = InitSocket(conn, &hub)
+	var s = socket.InitSocket(conn, &hub)
 	hub.register <- &s
 
 	go s.Read()
@@ -50,7 +51,7 @@ func joinHubHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var s = InitSocket(conn, hub)
+	var s = socket.InitSocket(conn, hub)
 	hub.register <- &s
 
 	go s.Read()

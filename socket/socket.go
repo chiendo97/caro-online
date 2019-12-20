@@ -6,18 +6,28 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type Hub interface {
+	ReceiveMsg(msg Message)
+	Unregister(s *Socket)
+}
+
 type Socket struct {
 	// Hub for behide execution
-	Hub interface {
-		ReceiveMsg(msg Message)
-		Unregister(s *Socket)
-	}
+	Hub Hub
 
 	// The websocket connection.
 	Conn *websocket.Conn
 
 	// receive Message from hub and send thorough Conn
 	Message chan Message
+}
+
+func InitSocket(conn *websocket.Conn, hub Hub) Socket {
+	return Socket{
+		Conn:    conn,
+		Hub:     hub,
+		Message: make(chan Message),
+	}
 }
 
 func (c *Socket) Write() {

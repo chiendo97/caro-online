@@ -25,25 +25,25 @@ func main() {
 	fmt.Print("Option: ")
 	fmt.Scanln(&option)
 
-	var socket socket.Socket
-	var hub = InitHub()
-	var c *websocket.Conn
-	var err error
+	var host string
 
 	switch option {
 	case 0:
-		c, _, err = websocket.DefaultDialer.Dial("ws://localhost:8080/create_hub", nil)
+		host = "ws://localhost:8080/create_hub"
 	case 1:
-		c, _, err = websocket.DefaultDialer.Dial("ws://localhost:8080/join_hub", nil)
+		host = "ws://localhost:8080/join_hub"
 	default:
 		log.Fatalln("Invalid option: ", option)
 	}
+
+	var c, _, err = websocket.DefaultDialer.Dial(host, nil)
 
 	if err != nil {
 		log.Fatal("Dial error: ", err)
 	}
 
-	socket = InitSocket(c, &hub)
+	var hub = InitHub()
+	var socket = socket.InitSocket(c, &hub)
 	hub.socket = &socket
 
 	go hub.run()
