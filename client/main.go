@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"helloworld/caro/socket"
 	"log"
 	"os"
@@ -13,31 +12,24 @@ import (
 func main() {
 	log.Println("Client is running")
 
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
-
-	var option int
-
-	fmt.Println(`Options:
-	- Option 0: create new hub
-	- Option 1: join current hub
-	`)
-	fmt.Print("Option: ")
-	fmt.Scanln(&option)
-
+	// {{{ === Take options
+	var args = os.Args
 	var host string
 
-	switch option {
-	case 0:
-		host = "ws://localhost:8080/create_hub"
+	switch len(args) {
 	case 1:
+		log.Fatalln("No option")
+	case 2:
+		host = "ws://localhost:8080/create_hub"
+	case 3:
 		host = "ws://localhost:8080/join_hub"
 	default:
-		log.Fatalln("Invalid option: ", option)
+		log.Fatalln("Invalid option")
 	}
+	// }}}
 
+	// {{{ === Init socket and hub
 	var c, _, err = websocket.DefaultDialer.Dial(host, nil)
-
 	if err != nil {
 		log.Fatal("Dial error: ", err)
 	}
@@ -49,7 +41,11 @@ func main() {
 	go hub.run()
 	go socket.Read()
 	go socket.Write()
+	//}}}
 
+	// {{{ === take interrupt
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
 	for {
 		select {
 		case <-interrupt:
@@ -57,4 +53,6 @@ func main() {
 		}
 
 	}
+	// }}}
+
 }
