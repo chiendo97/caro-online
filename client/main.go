@@ -22,7 +22,8 @@ func main() {
 	case 2:
 		host = "ws://localhost:8080/create_hub"
 	case 3:
-		host = "ws://localhost:8080/join_hub"
+		var param = args[2]
+		host = "ws://localhost:8080/join_hub" + "?" + "hub=" + param
 	default:
 		log.Fatalln("Invalid option")
 	}

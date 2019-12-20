@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"helloworld/caro/socket"
 	"log"
 	"net/http"
@@ -22,7 +23,7 @@ func createHubHandler(w http.ResponseWriter, r *http.Request) {
 	_, ok := hubs[key]
 
 	if ok {
-		log.Panicln("Key duplicate:", key)
+		log.Panicln("Key duplicate:", key, conn.RemoteAddr())
 	}
 
 	var hub = InitHub()
@@ -35,19 +36,25 @@ func createHubHandler(w http.ResponseWriter, r *http.Request) {
 
 	go s.Read()
 	go s.Write()
+
+	select {
+	case s.Message <- socket.GenerateErrMsg("hub: " + key):
+	}
 }
 
 func joinHubHandler(w http.ResponseWriter, r *http.Request) {
 
-	log.Println("Joining hub")
+	var key = r.URL.Query().Get("hub")
+
+	log.Println("Joining hub: ", key)
 
 	conn, _ := upgrader.Upgrade(w, r, nil)
-
-	key := "asdfasdf"
 
 	hub, ok := hubs[key]
 
 	if !ok {
+		log.Println("No available hub:", key, conn.RemoteAddr())
+		conn.WriteMessage(websocket.CloseMessage, []byte{})
 		return
 	}
 
@@ -64,6 +71,20 @@ func main() {
 
 	http.HandleFunc("/create_hub", createHubHandler)
 	http.HandleFunc("/join_hub", joinHubHandler)
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+
+		keys, ok := r.URL.Query()["keys"]
+
+		if !ok {
+			log.Println("Key missing")
+		}
+
+		if len(keys) < 1 {
+			log.Println("Key missing")
+		}
+
+		fmt.Fprint(w, keys)
+	})
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
