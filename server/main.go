@@ -32,9 +32,19 @@ func findHubHandler(w http.ResponseWriter, r *http.Request) {
 	hub, ok := hubs[key]
 
 	if !ok {
-		log.Println("No available hub:", key, conn.RemoteAddr())
-		conn.WriteMessage(websocket.CloseMessage, []byte{})
-		return
+		// TODO: generate random key
+		key := "asdfasdf"
+
+		_, ok := hubs[key]
+
+		if ok {
+			log.Panicln("Key duplicate:", key, conn.RemoteAddr())
+		}
+
+		hub = InitHub()
+		go hub.run()
+
+		hubs[key] = hub
 	}
 
 	var s = socket.InitSocket(conn, hub)
