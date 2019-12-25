@@ -72,18 +72,7 @@ func main() {
 	http.HandleFunc("/create_hub", createHubHandler)
 	http.HandleFunc("/join_hub", joinHubHandler)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-
-		keys, ok := r.URL.Query()["keys"]
-
-		if !ok {
-			log.Println("Key missing")
-		}
-
-		if len(keys) < 1 {
-			log.Println("Key missing")
-		}
-
-		fmt.Fprint(w, keys)
+		fmt.Fprint(w, "Welcome to caro-online")
 	})
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
