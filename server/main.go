@@ -62,9 +62,9 @@ func createHubHandler(w http.ResponseWriter, r *http.Request) {
 	var hub = InitHub()
 	go hub.run()
 
-	hubs[key] = &hub
+	hubs[key] = hub
 
-	var s = socket.InitSocket(conn, &hub)
+	var s = socket.InitSocket(conn, hub)
 	hub.register <- &s
 
 	go s.Read()

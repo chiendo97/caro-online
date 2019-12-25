@@ -18,9 +18,9 @@ type Hub struct {
 	done chan int
 }
 
-func InitHub() Hub {
+func InitHub() *Hub {
 
-	return Hub{
+	return &Hub{
 		message: make(chan s.Message),
 
 		game:    game.InitGame(),
