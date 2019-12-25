@@ -38,7 +38,7 @@ func createHubHandler(w http.ResponseWriter, r *http.Request) {
 	go s.Write()
 
 	select {
-	case s.Message <- socket.GenerateErrMsg("hub: " + key):
+	case s.Message <- socket.GenerateErrMsg("Hub key: " + key):
 	}
 }
 
