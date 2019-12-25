@@ -18,7 +18,7 @@ func main() {
 
 	switch len(args) {
 	case 1:
-		log.Fatalln("No option")
+		host = "ws://localhost:8080/find_hub"
 	case 2:
 		host = "ws://localhost:8080/create_hub"
 	case 3:
