@@ -104,7 +104,7 @@ func main() {
 
 	http.HandleFunc("/create_hub", createHubHandler)
 	http.HandleFunc("/join_hub", joinHubHandler)
-	http.HandleFunc("/find_hub", joinHubHandler)
+	http.HandleFunc("/find_hub", findHubHandler)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Welcome to caro-online")
 	})
