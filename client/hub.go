@@ -38,7 +38,7 @@ func (hub *Hub) run() {
 
 			switch msg.Kind {
 			case "error":
-				log.Println("Msg msg: ", msg.Msg)
+				log.Println("Server:", msg.Msg)
 
 			case "game":
 				hub.game = msg.Game
