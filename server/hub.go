@@ -7,6 +7,7 @@ import (
 )
 
 type Hub struct {
+	key     string
 	message chan s.Message
 
 	game    game.Game
@@ -18,9 +19,10 @@ type Hub struct {
 	done chan int
 }
 
-func InitHub() *Hub {
+func InitHub(key string) *Hub {
 
 	return &Hub{
+		key:     key,
 		message: make(chan s.Message),
 
 		game:    game.InitGame(),

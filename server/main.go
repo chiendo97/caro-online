@@ -41,7 +41,7 @@ func findHubHandler(w http.ResponseWriter, r *http.Request) {
 			log.Panicln("Key duplicate:", key, conn.RemoteAddr())
 		}
 
-		hub = InitHub()
+		hub = InitHub(key)
 		go hub.run()
 
 		hubs[key] = hub
@@ -69,7 +69,7 @@ func createHubHandler(w http.ResponseWriter, r *http.Request) {
 		log.Panicln("Key duplicate:", key, conn.RemoteAddr())
 	}
 
-	var hub = InitHub()
+	var hub = InitHub(key)
 	go hub.run()
 
 	hubs[key] = hub
