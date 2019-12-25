@@ -6,6 +6,7 @@ Online is where people can find and join the game with each others.
 
 ## Feature
 
+
 ## Installation
 
 Install Golang [golang](https://golang.org/doc/install)
@@ -17,11 +18,17 @@ go get xxx
 ## Usage
 
 ### Server
+
+Running server on :8080 port
 ```bass
+go run ./server/*.go
 ```
 
 ### Client
+
+Run 2 clients on different terminals to play to each others
 ```bass
+go run ./client/*.go
 ```
 
 ## Contributing
