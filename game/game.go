@@ -131,7 +131,7 @@ func (g Game) Render() {
 	}
 }
 
-func (b Board) CheckWinnder() int {
+func (b Board) CheckWinner() int {
 
 	// -1 playing
 	// 0 x win
