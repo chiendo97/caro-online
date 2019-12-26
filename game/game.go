@@ -84,7 +84,7 @@ func initCell() Cell {
 
 func (g Game) TakeMove(move Move) (Game, error) {
 
-	var b = g.Board
+	var board = g.Board
 
 	x := move.X
 	y := move.Y
@@ -97,21 +97,21 @@ func (g Game) TakeMove(move Move) (Game, error) {
 	if y < 0 || y >= g.Board.Height {
 		return g, errors.New("Invalid Y")
 	}
-	if b.Cells[x][y].IsFill {
+	if board.Cells[x][y].IsFill {
 		return g, errors.New("Cell is already filled")
 	}
 
 	switch t {
 	case xType:
-		b.Cells[x][y] = Cell{Icon: xIcon}
+		board.Cells[x][y] = Cell{Icon: xIcon}
 	case oType:
-		b.Cells[x][y] = Cell{Icon: oIcon}
+		board.Cells[x][y] = Cell{Icon: oIcon}
 	default:
 		return g, errors.New("Invalid type: " + string(t))
 	}
-	b.Cells[x][y].IsFill = true
+	board.Cells[x][y].IsFill = true
 
-	g.Board = b
+	g.Board = board
 	g.XFirst = 1 - g.XFirst
 
 	return g, nil
