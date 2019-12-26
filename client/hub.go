@@ -44,28 +44,40 @@ func (hub *Hub) run() {
 				hub.game = msg.Game
 				hub.game.Render()
 
-				switch hub.game.WhoAmI {
-				case hub.game.XFirst:
-					// input
-					var x, y int
-					fmt.Print("Your turn: ")
-					fmt.Scanln(&x, &y)
+				if hub.game.Status == 0 || hub.game.Status == 1 {
 
-					var msg = s.GenerateMoveMsg(game.Move{
-						X:    x,
-						Y:    y,
-						Turn: hub.game.WhoAmI,
-					})
-
-					select {
-					case hub.socket.Message <- msg:
-					default:
-						log.Panicln("Cant send move to socket")
+					if hub.game.WhoAmI == hub.game.Status {
+						fmt.Println("You are winner!!")
+					} else {
+						fmt.Println("The opponent won, glhf.")
 					}
+				} else if hub.game.Status == 2 {
+					fmt.Println("Game tie!!")
+				} else {
+					switch hub.game.WhoAmI {
+					case hub.game.XFirst:
+						// input
+						var x, y int
+						fmt.Print("Your turn: ")
+						fmt.Scanln(&x, &y)
 
-				default:
-					fmt.Println("Enemy turn.")
+						var msg = s.GenerateMoveMsg(game.Move{
+							X:    x,
+							Y:    y,
+							Turn: hub.game.WhoAmI,
+						})
+
+						select {
+						case hub.socket.Message <- msg:
+						default:
+							log.Panicln("Cant send move to socket")
+						}
+
+					default:
+						fmt.Println("Enemy turn.")
+					}
 				}
+
 			default:
 				log.Panicln("Invalid msg kind", msg)
 			}
