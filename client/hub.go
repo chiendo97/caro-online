@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"helloworld/caro/game"
-	"helloworld/caro/socket"
 	s "helloworld/caro/socket"
 	"log"
 )
@@ -38,10 +37,10 @@ func (hub *Hub) run() {
 		case msg := <-hub.message:
 
 			switch msg.Kind {
-			case socket.MsgMessage:
+			case s.MsgMessage:
 				log.Println("Server:", msg.Msg)
 
-			case socket.GameMessage:
+			case s.GameMessage:
 				hub.game = msg.Game
 				hub.game.Render()
 
