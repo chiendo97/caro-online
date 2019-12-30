@@ -12,7 +12,7 @@ import (
 func main() {
 	log.Println("Client is running")
 
-	// {{{ === Take options
+	// === Take options
 	var args = os.Args
 	var host string
 
@@ -27,9 +27,8 @@ func main() {
 	default:
 		log.Fatalln("Invalid option")
 	}
-	// }}}
 
-	// {{{ === Init socket and hub
+	// === Init socket and hub
 	var c, _, err = websocket.DefaultDialer.Dial(host, nil)
 	if err != nil {
 		log.Fatal("Dial error: ", err)
@@ -42,18 +41,16 @@ func main() {
 	go hub.run()
 	go socket.Read()
 	go socket.Write()
-	//}}}
 
-	// {{{ === take interrupt
+	// === take interrupt
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 	for {
 		select {
 		case <-interrupt:
-			log.Fatalln("Exit")
+			log.Fatalln("Exit client")
 		}
 
 	}
-	// }}}
 
 }
