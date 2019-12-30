@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"helloworld/caro/game"
+	"helloworld/caro/socket"
 	s "helloworld/caro/socket"
 	"log"
 )
@@ -37,10 +38,10 @@ func (hub *Hub) run() {
 		case msg := <-hub.message:
 
 			switch msg.Kind {
-			case "error":
+			case socket.MsgMessage:
 				log.Println("Server:", msg.Msg)
 
-			case "game":
+			case socket.GameMessage:
 				hub.game = msg.Game
 				hub.game.Render()
 
@@ -79,7 +80,7 @@ func (hub *Hub) run() {
 				}
 
 			default:
-				log.Panicln("Invalid msg kind", msg)
+				log.Panicln("Invalid request kind:", msg)
 			}
 		}
 	}

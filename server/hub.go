@@ -77,7 +77,7 @@ func (hub *Hub) run() {
 		select {
 		case msg := <-hub.message:
 			switch msg.Kind {
-			case "move":
+			case s.MoveMessage:
 				var move = msg.Move
 				game, err := hub.game.TakeMove(move)
 
