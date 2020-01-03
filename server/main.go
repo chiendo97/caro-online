@@ -80,9 +80,7 @@ func createHubHandler(w http.ResponseWriter, r *http.Request) {
 	go s.Read()
 	go s.Write()
 
-	select {
-	case s.Message <- socket.GenerateErrMsg("Hub key: " + key):
-	}
+	hub.message <- socket.GenerateErrMsg("Hub key: " + key)
 }
 
 func joinHubHandler(w http.ResponseWriter, r *http.Request) {

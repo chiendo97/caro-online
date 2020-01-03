@@ -7,12 +7,12 @@ import (
 )
 
 type Hub struct {
-	key     string
-	message chan s.Message
+	key string
 
 	game    game.Game
 	players map[*s.Socket]int
 
+	message    chan s.Message
 	register   chan *s.Socket
 	unregister chan *s.Socket
 
@@ -90,6 +90,9 @@ func (hub *Hub) run() {
 				hub.game = game
 				hub.broadcastGame()
 
+			case s.MsgMessage:
+				hub.broadcast(msg)
+
 			default:
 				log.Panicln("No msg kind case", msg)
 				return
@@ -127,6 +130,7 @@ func (hub *Hub) run() {
 				log.Println("Player left:", socket.Conn.RemoteAddr())
 				delete(hub.players, socket)
 				close(socket.Message)
+				hub.broadcast(s.GenerateErrMsg("Waiting for other players"))
 			}
 		case <-hub.done:
 			log.Panicln("Hub immediately stop")
