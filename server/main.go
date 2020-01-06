@@ -2,14 +2,13 @@ package main
 
 import (
 	"fmt"
-	"helloworld/caro/socket"
 	"log"
 	"net/http"
 
 	"github.com/gorilla/websocket"
 )
 
-var hubs = make(map[string]*Hub)
+var core = InitServer()
 var upgrader = websocket.Upgrader{}
 
 func findHubHandler(w http.ResponseWriter, r *http.Request) {
@@ -18,40 +17,9 @@ func findHubHandler(w http.ResponseWriter, r *http.Request) {
 
 	conn, _ := upgrader.Upgrade(w, r, nil)
 
-	var key string
-
-	for k, v := range hubs {
-
-		if len(v.players) < 2 { // hub not enough players
-
-			key = k
-			break
-		}
-	}
-
-	hub, ok := hubs[key]
-
-	if !ok {
-		// TODO: generate random key
-		key := "asdfasdf"
-
-		_, ok := hubs[key]
-
-		if ok {
-			log.Panicln("Key duplicate:", key, conn.RemoteAddr())
-		}
-
-		hub = InitHub(key)
-		go hub.run()
-
-		hubs[key] = hub
-	}
-
-	var s = socket.InitSocket(conn, hub)
-	hub.register <- &s
-
-	go s.Read()
-	go s.Write()
+	var key = "asdf"
+	var msg = InitMessage(conn, key)
+	core.findGame <- msg
 }
 
 func createHubHandler(w http.ResponseWriter, r *http.Request) {
@@ -63,24 +31,8 @@ func createHubHandler(w http.ResponseWriter, r *http.Request) {
 	// TODO: generate random key
 	key := "asdfasdf"
 
-	_, ok := hubs[key]
-
-	if ok {
-		log.Panicln("Key duplicate:", key, conn.RemoteAddr())
-	}
-
-	var hub = InitHub(key)
-	go hub.run()
-
-	hubs[key] = hub
-
-	var s = socket.InitSocket(conn, hub)
-	hub.register <- &s
-
-	go s.Read()
-	go s.Write()
-
-	hub.message <- socket.GenerateErrMsg("Hub key: " + key)
+	var msg = InitMessage(conn, key)
+	core.createGame <- msg
 }
 
 func joinHubHandler(w http.ResponseWriter, r *http.Request) {
@@ -91,20 +43,8 @@ func joinHubHandler(w http.ResponseWriter, r *http.Request) {
 
 	conn, _ := upgrader.Upgrade(w, r, nil)
 
-	hub, ok := hubs[key]
-
-	if !ok {
-		log.Println("No available hub:", key, conn.RemoteAddr())
-		conn.WriteMessage(websocket.CloseMessage, []byte{})
-		return
-	}
-
-	var s = socket.InitSocket(conn, hub)
-	hub.register <- &s
-
-	go s.Read()
-	go s.Write()
-
+	var msg = InitMessage(conn, key)
+	core.joinGame <- msg
 }
 
 func main() {
@@ -116,6 +56,8 @@ func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Welcome to caro-online")
 	})
+
+	core.run()
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

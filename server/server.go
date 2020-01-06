@@ -12,6 +12,13 @@ type msgServer struct {
 	gameId string
 }
 
+func InitMessage(conn *websocket.Conn, gameId string) msgServer {
+	return msgServer{
+		socket: conn,
+		gameId: gameId,
+	}
+}
+
 type coreServer struct {
 	hubs          map[string]*Hub
 	availableHubs chan string
@@ -27,7 +34,19 @@ type coreServer struct {
 }
 
 func InitServer() *coreServer {
-	return &coreServer{}
+	return &coreServer{
+		hubs:          make(map[string]*Hub),
+		availableHubs: make(chan string, 5),
+
+		findGame:   make(chan msgServer),
+		joinGame:   make(chan msgServer),
+		createGame: make(chan msgServer),
+
+		register:   make(chan *Hub),
+		unregister: make(chan *Hub),
+
+		done: make(chan int),
+	}
 }
 
 // func (core *coreServer) createHub() {
@@ -56,14 +75,23 @@ func (core *coreServer) run() {
 	go func() {
 		for {
 			select {
-			case <-core.register:
+			case _, ok := <-core.register:
+				if !ok {
+					return
+				}
 			}
 		}
 	}()
 	go func() {
 		for {
 			select {
-			case <-core.unregister:
+			case msg, ok := <-core.unregister:
+				if !ok {
+					return
+				}
+
+				var gameId = msg.key
+				delete(core.hubs, gameId)
 			}
 		}
 	}()
@@ -131,10 +159,10 @@ func (core *coreServer) run() {
 					log.Panicln("Key duplicate: ", gameId, msg.socket.RemoteAddr())
 				}
 
-				var hub = InitHub(gameId)
+				var hub = InitHub(core, gameId)
 				go hub.run()
 
-				hubs[gameId] = hub
+				core.hubs[gameId] = hub
 
 				var s = socket.InitSocket(msg.socket, hub)
 				hub.register <- &s

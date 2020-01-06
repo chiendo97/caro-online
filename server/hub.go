@@ -7,7 +7,8 @@ import (
 )
 
 type Hub struct {
-	key string
+	core *coreServer
+	key  string
 
 	game    game.Game
 	players map[*s.Socket]int
@@ -19,9 +20,10 @@ type Hub struct {
 	done chan int
 }
 
-func InitHub(key string) *Hub {
+func InitHub(core *coreServer, key string) *Hub {
 
 	return &Hub{
+		core:    core,
 		key:     key,
 		message: make(chan s.Message),
 
@@ -133,10 +135,10 @@ func (hub *Hub) run() {
 				hub.broadcast(s.GenerateErrMsg("Waiting for other players"))
 			}
 		case <-hub.done:
-			log.Panicln("Hub immediately stop")
 			for socket := range hub.players {
 				close(socket.Message)
 			}
+			log.Panicln("Hub immediately stop")
 			return
 		}
 	}
