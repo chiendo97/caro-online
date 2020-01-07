@@ -3,6 +3,7 @@ package main
 import (
 	"helloworld/caro/socket"
 	"log"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -106,10 +107,16 @@ func (core *coreServer) run() {
 
 				log.Println("Finding game")
 
-				var gameId = <-core.availableHubs
-				msg.gameId = gameId
+				var tick = time.After(1 * time.Second)
 
-				core.joinGame <- msg
+				select {
+				case gameId := <-core.availableHubs:
+					msg.gameId = gameId
+					core.joinGame <- msg
+				case <-tick:
+					core.createGame <- msg
+				}
+
 			}
 		}
 	}()
@@ -163,6 +170,7 @@ func (core *coreServer) run() {
 				go hub.run()
 
 				core.hubs[gameId] = hub
+				core.availableHubs <- hub.key
 
 				var s = socket.InitSocket(msg.socket, hub)
 				hub.register <- &s
