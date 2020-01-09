@@ -46,8 +46,6 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	log.Println("Server is running")
-
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/create_hub", createHubHandler)
 	http.HandleFunc("/join_hub", joinHubHandler)
@@ -59,5 +57,7 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
+
+	log.Printf("Server is running on %s port", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }

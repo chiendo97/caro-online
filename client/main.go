@@ -11,12 +11,16 @@ import (
 )
 
 func main() {
-	log.Println("Client is running")
-
 	var addr = os.Getenv("host")
+	var port = os.Getenv("port")
 	if addr == "" {
-		addr = "localhost:8080"
+		if port == "" {
+			port = "8080"
+		}
+		addr = "localhost:" + port
 	}
+
+	log.Printf("Client is connecting to %s", addr)
 
 	// === Take options
 	var args = os.Args
