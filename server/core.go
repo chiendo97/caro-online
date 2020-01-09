@@ -66,11 +66,6 @@ func (core *coreServer) createHub(msg msgServer) string {
 
 	core.hubs[gameId] = hub
 
-	var s = socket.InitSocket(msg.conn, hub)
-
-	go s.Read()
-	go s.Write()
-
 	core.subscribe(hub)
 
 	return hub.key
