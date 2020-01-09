@@ -18,7 +18,7 @@ type Hub struct {
 func InitHub() Hub {
 	return Hub{
 		message: make(chan s.Message),
-		game:    game.InitGame(),
+		// game:    game.InitGame(),
 	}
 }
 
@@ -47,9 +47,9 @@ func (hub *Hub) run() {
 				if hub.game.Status == 0 || hub.game.Status == 1 {
 
 					if hub.game.WhoAmI == hub.game.Status {
-						fmt.Println("You are winner!!")
+						fmt.Println("You won !!!")
 					} else {
-						fmt.Println("The opponent won, glhf.")
+						fmt.Println("Your opponent won, good luck next !!")
 					}
 				} else if hub.game.Status == 2 {
 					fmt.Println("Game tie!!")

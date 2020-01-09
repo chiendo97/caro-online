@@ -24,6 +24,7 @@ var row = []int{-1, -1, -1, 0, 1, 1, 1, 0}
 var col = []int{-1, 0, 1, 1, 1, 0, -1, -1}
 
 type Game struct {
+	GameId string
 	Board  Board
 	Status int
 
@@ -43,7 +44,7 @@ type Board struct {
 }
 
 func (g Game) String() string {
-	return fmt.Sprint("Status: ", g.Status, " XFirst: ", g.XFirst, " WhoAmI: ", g.WhoAmI)
+	return fmt.Sprintf("Status (%d) XFirst (%d) WhoAmI (%d)", g.Status, g.XFirst, g.WhoAmI)
 }
 
 type Cell struct {
@@ -51,8 +52,9 @@ type Cell struct {
 	IsFill bool
 }
 
-func InitGame() Game {
+func InitGame(gameId string) Game {
 	return Game{
+		GameId: gameId,
 		Board:  initBoard(defaultWidth, defaultHeight),
 		Status: -1,
 		XFirst: 0,
@@ -123,7 +125,7 @@ func (g Game) TakeMove(move Move) (Game, error) {
 
 func (g Game) Render() {
 
-	fmt.Printf("Game: \n\n")
+	fmt.Printf("Game: %s\n\n", g.GameId)
 
 	var b = g.Board
 

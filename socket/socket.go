@@ -38,16 +38,16 @@ func (c *Socket) Write() {
 	for {
 		select {
 		case msg, ok := <-c.Message:
+
 			if !ok {
-				log.Println("Message chan close")
+				log.Println("socket: message channel closed")
 				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 
 			err := c.Conn.WriteJSON(msg)
-
 			if err != nil {
-				log.Println("Cant send msg:", err, msg)
+				log.Printf("socket: error write socket %v %s", err, msg)
 				return
 			}
 		}
@@ -56,24 +56,23 @@ func (c *Socket) Write() {
 
 func (c *Socket) Read() {
 	defer func() {
-		c.Hub.Unregister(c)
 		c.Conn.Close()
+		c.Hub.Unregister(c)
 	}()
 
 	for {
 		var msg Message
-
 		err := c.Conn.ReadJSON(&msg)
 
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("Cant read msg: %v", err)
+				log.Printf("socket: error read socket %v", err)
 			} else {
-				log.Println("I read close message")
+				log.Println("socket: read message closed")
 			}
 			return
 		}
 
-		c.Hub.ReceiveMsg(msg)
+		go c.Hub.ReceiveMsg(msg)
 	}
 }

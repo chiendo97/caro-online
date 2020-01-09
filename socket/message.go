@@ -22,11 +22,11 @@ type Message struct {
 func (msg Message) String() string {
 	switch msg.Kind {
 	case MoveMessage:
-		return fmt.Sprint("Move msg: ", msg.Move)
+		return fmt.Sprint("Move: ", msg.Move)
 	case GameMessage:
-		return fmt.Sprint("Game msg: ", msg.Game)
+		return fmt.Sprint("Game: ", msg.Game)
 	case MsgMessage:
-		return fmt.Sprint("Msg msg: ", msg.Msg)
+		return fmt.Sprint("Msg: ", msg.Msg)
 	}
 	return fmt.Sprint("Unknown msg kind: ", msg.Kind)
 }
