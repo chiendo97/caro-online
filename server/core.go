@@ -1,9 +1,10 @@
 package main
 
 import (
-	"helloworld/caro/socket"
 	"log"
 	"time"
+
+	"github.com/chiendo97/caro-online/socket"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -35,7 +36,7 @@ type coreServer struct {
 	done chan int
 }
 
-func InitServer() *coreServer {
+func initCore() *coreServer {
 	return &coreServer{
 		hubs:          make(map[string]*Hub),
 		availableHubs: make(chan string, 5),
@@ -138,6 +139,8 @@ func (core *coreServer) run() {
 			log.Printf("core: socket (%s) find game", msg.conn.RemoteAddr())
 
 			core.findHub(msg)
+
+			log.Println("done")
 		case msg := <-core.joinGame:
 			log.Printf("core: socket (%s) join hub (%s)", msg.gameId, msg.gameId)
 

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"helloworld/caro/socket"
+	"github.com/chiendo97/caro-online/socket"
 	"log"
 	"os"
 	"os/signal"

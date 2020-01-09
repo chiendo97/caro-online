@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var core = InitServer()
+var core = initCore()
 var upgrader = websocket.Upgrader{}
 
 func findHubHandler(w http.ResponseWriter, r *http.Request) {

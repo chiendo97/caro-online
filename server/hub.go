@@ -1,10 +1,11 @@
 package main
 
 import (
-	"helloworld/caro/game"
-	s "helloworld/caro/socket"
 	"log"
 	"time"
+
+	"github.com/chiendo97/caro-online/game"
+	s "github.com/chiendo97/caro-online/socket"
 )
 
 type Hub struct {

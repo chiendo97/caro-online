@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"helloworld/caro/game"
-	s "helloworld/caro/socket"
+	"github.com/chiendo97/caro-online/game"
+	s "github.com/chiendo97/caro-online/socket"
 	"log"
 )
 
