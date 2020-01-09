@@ -40,14 +40,14 @@ func (c *Socket) Write() {
 		case msg, ok := <-c.Message:
 
 			if !ok {
-				log.Println("socket: message channel closed")
+				log.Println("socket: write closed")
 				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 
 			err := c.Conn.WriteJSON(msg)
 			if err != nil {
-				log.Printf("socket: error write socket %v %s", err, msg)
+				log.Printf("socket: error write socket %v", err)
 				return
 			}
 		}
@@ -68,7 +68,7 @@ func (c *Socket) Read() {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("socket: error read socket %v", err)
 			} else {
-				log.Println("socket: read message closed")
+				log.Println("socket: read closed")
 			}
 			return
 		}
