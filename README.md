@@ -1,15 +1,22 @@
 # Caro-online
 ## Introduction
 
-Caro is the tic-tac-to game with 20x20 board
-Online is where people can find and join the game with each others.
+![](demo.gif)
+Caro is the tic-tac-to game with 20x20 board. <br>
+I wrote this project for learning golang.
 
-## Feature
+## Try the service at
+
+
+```
+export host=caro-game-online.herokuapp.com
+go run ./client/*.go
+```
 
 
 ## Installation
 
-Install Golang [golang](https://golang.org/doc/install)
+ * Install [golang](https://golang.org/doc/install), git
 
 ```bash
 go get xxx
