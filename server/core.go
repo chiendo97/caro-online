@@ -71,6 +71,8 @@ func (core *coreServer) createHub(msg msgServer) string {
 	go s.Read()
 	go s.Write()
 
+	core.subscribe(hub)
+
 	return hub.key
 }
 
@@ -139,8 +141,6 @@ func (core *coreServer) run() {
 			log.Printf("core: socket (%s) find game", msg.conn.RemoteAddr())
 
 			core.findHub(msg)
-
-			log.Println("done")
 		case msg := <-core.joinGame:
 			log.Printf("core: socket (%s) join hub (%s)", msg.gameId, msg.gameId)
 

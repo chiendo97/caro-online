@@ -55,7 +55,7 @@ func sendMessage(socket *s.Socket, msg s.Message) {
 func (hub *Hub) broadcast() {
 
 	if len(hub.players) < 2 {
-		hub.transmitMsgToAll(s.GenerateErrMsg("hub (" + hub.key + ") not enough players"))
+		hub.transmitMsgToAll(s.GenerateErrMsg("hub (" + hub.key + ") wait for players"))
 		return
 	}
 
@@ -113,10 +113,6 @@ func (hub *Hub) subscribe(socket *s.Socket) {
 	hub.players[socket] = id
 
 	hub.broadcast()
-
-	if len(hub.players) == 1 {
-		hub.core.register <- hub
-	}
 }
 
 func (hub *Hub) unsubscribe(socket *s.Socket) {
