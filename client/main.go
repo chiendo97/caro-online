@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/chiendo97/caro-online/socket"
 	"log"
 	"os"
 	"os/signal"
+
+	"github.com/chiendo97/caro-online/socket"
 
 	"github.com/gorilla/websocket"
 )
@@ -12,18 +13,23 @@ import (
 func main() {
 	log.Println("Client is running")
 
+	var addr = os.Getenv("host")
+	if addr == "" {
+		addr = "localhost:8080"
+	}
+
 	// === Take options
 	var args = os.Args
 	var host string
 
 	switch len(args) {
 	case 1:
-		host = "ws://localhost:8080/find_hub"
+		host = "ws://" + addr + "/find_hub"
 	case 2:
-		host = "ws://localhost:8080/create_hub"
+		host = "ws://" + addr + "/create_hub"
 	case 3:
 		var param = args[2]
-		host = "ws://localhost:8080/join_hub" + "?" + "hub=" + param
+		host = "ws://" + addr + "/join_hub" + "?" + "hub=" + param
 	default:
 		log.Fatalln("Invalid option")
 	}
