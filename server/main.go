@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/websocket"
 )
@@ -54,5 +55,9 @@ func main() {
 
 	go core.run()
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	var port = os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
