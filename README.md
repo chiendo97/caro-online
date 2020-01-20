@@ -46,6 +46,9 @@ go run ./client/*.go
 * Benchmark
 * Bot
 * API docs
+* Player login
+* Game history
+* Database
 
 ## Contributing
 
