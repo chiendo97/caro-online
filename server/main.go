@@ -9,10 +9,9 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var core = initCore()
 var upgrader = websocket.Upgrader{}
 
-func findHubHandler(w http.ResponseWriter, r *http.Request) {
+func findHubHandler(core *coreServer, w http.ResponseWriter, r *http.Request) {
 
 	conn, _ := upgrader.Upgrade(w, r, nil)
 
@@ -21,7 +20,7 @@ func findHubHandler(w http.ResponseWriter, r *http.Request) {
 	core.findGame <- msg
 }
 
-func createHubHandler(w http.ResponseWriter, r *http.Request) {
+func createHubHandler(core *coreServer, w http.ResponseWriter, r *http.Request) {
 
 	conn, _ := upgrader.Upgrade(w, r, nil)
 
@@ -30,7 +29,7 @@ func createHubHandler(w http.ResponseWriter, r *http.Request) {
 	core.createGame <- msg
 }
 
-func joinHubHandler(w http.ResponseWriter, r *http.Request) {
+func joinHubHandler(core *coreServer, w http.ResponseWriter, r *http.Request) {
 
 	conn, _ := upgrader.Upgrade(w, r, nil)
 
@@ -48,10 +47,18 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	log.Println("Server is running")
 
+	var core = initCore()
+
 	http.HandleFunc("/", indexHandler)
-	http.HandleFunc("/create_hub", createHubHandler)
-	http.HandleFunc("/join_hub", joinHubHandler)
-	http.HandleFunc("/find_hub", findHubHandler)
+	http.HandleFunc("/create_hub", func(w http.ResponseWriter, r *http.Request) {
+		createHubHandler(core, w, r)
+	})
+	http.HandleFunc("/join_hub", func(w http.ResponseWriter, r *http.Request) {
+		joinHubHandler(core, w, r)
+	})
+	http.HandleFunc("/find_hub", func(w http.ResponseWriter, r *http.Request) {
+		findHubHandler(core, w, r)
+	})
 
 	go core.run()
 
