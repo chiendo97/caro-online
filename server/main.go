@@ -40,12 +40,10 @@ func joinHubHandler(core *coreServer, w http.ResponseWriter, r *http.Request) {
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "Welcome to caro online")
-	return
+	fmt.Fprint(w, "Welcome to caro online. Please come to https://github.com/chiendo97/caro-online for introduction")
 }
 
 func main() {
-	log.Println("Server is running")
 
 	var core = initCore()
 
@@ -66,5 +64,8 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
+
+	log.Printf("Server is running on %s\n", port)
+
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
