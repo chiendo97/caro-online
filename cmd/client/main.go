@@ -5,7 +5,9 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/chiendo97/caro-online/socket"
+	"github.com/chiendo97/caro-online/internal/client"
+
+	"github.com/chiendo97/caro-online/internal/socket"
 
 	"github.com/gorilla/websocket"
 )
@@ -44,11 +46,11 @@ func main() {
 		log.Fatal("Dial error: ", err)
 	}
 
-	var hub = InitHub()
+	var hub = client.InitHub()
 	var socket = socket.InitSocket(c, &hub)
-	hub.socket = &socket
+	hub.Socket = &socket
 
-	go hub.run()
+	go hub.Run()
 	go socket.Read()
 	go socket.Write()
 

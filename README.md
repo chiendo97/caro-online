@@ -2,17 +2,17 @@
 
 ## Introduction
 
-![demo](demo.gif)
+![demo](docs/demo.gif)
 
 Caro is the tic-tac-to game with 20x20 board.
 
 I wrote this project for learning golang.
 
-## Try the service at
+## Play online
 
 ```bash
 export host=caro-game-online.herokuapp.com
-go run ./client/*.go
+go run ./cmd/client/main.go
 ```
 
 ## Installation
@@ -20,25 +20,25 @@ go run ./client/*.go
 * Install [golang](https://golang.org/doc/install), git
 
 ```bash
-go get xxx
+go get https://github.com/chiendo97/caro-online
 ```
 
-## Usage
+## Play offline
 
-### Server
+### Running server
 
 Running server on :8080 port
 
 ```bass
-go run ./server/*.go
+go run ./cmd/server/main.go
 ```
 
-### Client
+### Running client
 
 Run 2 clients on different terminals to play to each others
 
 ```bass
-go run ./client/*.go
+go run ./cmd/client/main.go
 ```
 
 ## Future

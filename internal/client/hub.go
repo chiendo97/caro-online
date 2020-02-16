@@ -1,10 +1,11 @@
-package main
+package client
 
 import (
 	"fmt"
-	"github.com/chiendo97/caro-online/game"
-	s "github.com/chiendo97/caro-online/socket"
 	"log"
+
+	"github.com/chiendo97/caro-online/internal/game"
+	s "github.com/chiendo97/caro-online/internal/socket"
 )
 
 type Hub struct {
@@ -12,7 +13,7 @@ type Hub struct {
 
 	game game.Game
 
-	socket *s.Socket
+	Socket *s.Socket
 }
 
 func InitHub() Hub {
@@ -30,7 +31,7 @@ func (hub *Hub) Unregister(s *s.Socket) {
 	log.Fatalln("Server down")
 }
 
-func (hub *Hub) run() {
+func (hub *Hub) Run() {
 
 	for {
 		select {
@@ -68,7 +69,7 @@ func (hub *Hub) run() {
 						})
 
 						select {
-						case hub.socket.Message <- msg:
+						case hub.Socket.Message <- msg:
 						default:
 							log.Panicln("Cant send move to socket")
 						}

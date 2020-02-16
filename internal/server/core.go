@@ -1,10 +1,10 @@
-package main
+package server
 
 import (
 	"log"
 	"time"
 
-	"github.com/chiendo97/caro-online/socket"
+	"github.com/chiendo97/caro-online/internal/socket"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -22,13 +22,13 @@ func InitMessage(conn *websocket.Conn, gameId string) msgServer {
 	}
 }
 
-type coreServer struct {
+type CoreServer struct {
 	hubs          map[string]*Hub
 	availableHubs chan string
 
-	findGame   chan msgServer
-	joinGame   chan msgServer
-	createGame chan msgServer
+	FindGame   chan msgServer
+	JoinGame   chan msgServer
+	CreateGame chan msgServer
 
 	register   chan *Hub
 	unregister chan *Hub
@@ -36,14 +36,14 @@ type coreServer struct {
 	done chan int
 }
 
-func initCore() *coreServer {
-	return &coreServer{
+func InitCore() *CoreServer {
+	return &CoreServer{
 		hubs:          make(map[string]*Hub),
 		availableHubs: make(chan string, 5),
 
-		findGame:   make(chan msgServer),
-		joinGame:   make(chan msgServer),
-		createGame: make(chan msgServer),
+		FindGame:   make(chan msgServer),
+		JoinGame:   make(chan msgServer),
+		CreateGame: make(chan msgServer),
 
 		register:   make(chan *Hub),
 		unregister: make(chan *Hub),
@@ -52,7 +52,7 @@ func initCore() *coreServer {
 	}
 }
 
-func (core *coreServer) createHub(msg msgServer) string {
+func (core *CoreServer) createHub(msg msgServer) string {
 	var gameId = uuid.New().String()[:8]
 
 	_, ok := core.hubs[gameId]
@@ -71,7 +71,7 @@ func (core *coreServer) createHub(msg msgServer) string {
 	return hub.key
 }
 
-func (core *coreServer) joinHub(msg msgServer) {
+func (core *CoreServer) joinHub(msg msgServer) {
 
 	hub, ok := core.hubs[msg.gameId]
 
@@ -88,7 +88,7 @@ func (core *coreServer) joinHub(msg msgServer) {
 	go s.Write()
 
 }
-func (core *coreServer) findHub(msg msgServer) {
+func (core *CoreServer) findHub(msg msgServer) {
 	var tick = time.After(3 * time.Second)
 
 	for {
@@ -110,16 +110,16 @@ func (core *coreServer) findHub(msg msgServer) {
 
 }
 
-func (core *coreServer) subscribe(hub *Hub) {
+func (core *CoreServer) subscribe(hub *Hub) {
 	core.availableHubs <- hub.key
 }
 
-func (core *coreServer) unsubscribe(hub *Hub) {
+func (core *CoreServer) unsubscribe(hub *Hub) {
 
 	delete(core.hubs, hub.key)
 }
 
-func (core *coreServer) run() {
+func (core *CoreServer) Run() {
 	for {
 		select {
 		case <-core.done:
@@ -132,15 +132,15 @@ func (core *coreServer) run() {
 			log.Printf("core: detele hub (%s)", hub.key)
 
 			core.unsubscribe(hub)
-		case msg := <-core.findGame:
+		case msg := <-core.FindGame:
 			log.Printf("core: socket (%s) find game", msg.conn.RemoteAddr())
 
 			core.findHub(msg)
-		case msg := <-core.joinGame:
+		case msg := <-core.JoinGame:
 			log.Printf("core: socket (%s) join hub (%s)", msg.gameId, msg.gameId)
 
 			core.joinHub(msg)
-		case msg := <-core.createGame:
+		case msg := <-core.CreateGame:
 			log.Printf("core: socket (%s) create hub", msg.conn.RemoteAddr())
 
 			core.createHub(msg)

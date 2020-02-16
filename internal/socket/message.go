@@ -2,7 +2,7 @@ package socket
 
 import (
 	"fmt"
-	"github.com/chiendo97/caro-online/game"
+	"github.com/chiendo97/caro-online/internal/game"
 )
 
 const (

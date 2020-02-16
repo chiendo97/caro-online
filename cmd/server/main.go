@@ -6,37 +6,39 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/chiendo97/caro-online/internal/server"
+
 	"github.com/gorilla/websocket"
 )
 
 var upgrader = websocket.Upgrader{}
 
-func findHubHandler(core *coreServer, w http.ResponseWriter, r *http.Request) {
+func findHubHandler(core *server.CoreServer, w http.ResponseWriter, r *http.Request) {
 
 	conn, _ := upgrader.Upgrade(w, r, nil)
 
 	var key = ""
-	var msg = InitMessage(conn, key)
-	core.findGame <- msg
+	var msg = server.InitMessage(conn, key)
+	core.FindGame <- msg
 }
 
-func createHubHandler(core *coreServer, w http.ResponseWriter, r *http.Request) {
+func createHubHandler(core *server.CoreServer, w http.ResponseWriter, r *http.Request) {
 
 	conn, _ := upgrader.Upgrade(w, r, nil)
 
 	var key = ""
-	var msg = InitMessage(conn, key)
-	core.createGame <- msg
+	var msg = server.InitMessage(conn, key)
+	core.CreateGame <- msg
 }
 
-func joinHubHandler(core *coreServer, w http.ResponseWriter, r *http.Request) {
+func joinHubHandler(core *server.CoreServer, w http.ResponseWriter, r *http.Request) {
 
 	conn, _ := upgrader.Upgrade(w, r, nil)
 
 	var key = r.URL.Query().Get("hub")
 	log.Println("web: joining hub - ", key)
-	var msg = InitMessage(conn, key)
-	core.joinGame <- msg
+	var msg = server.InitMessage(conn, key)
+	core.JoinGame <- msg
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
@@ -45,7 +47,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 
-	var core = initCore()
+	var core = server.InitCore()
 
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/create_hub", func(w http.ResponseWriter, r *http.Request) {
@@ -58,13 +60,13 @@ func main() {
 		findHubHandler(core, w, r)
 	})
 
-	go core.run()
+	go core.Run()
 
 	var port = os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	log.Printf("Server is running on %s port", port)
+	log.Printf("Server is Running on %s port", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }

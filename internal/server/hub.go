@@ -1,15 +1,15 @@
-package main
+package server
 
 import (
 	"log"
 	"time"
 
-	"github.com/chiendo97/caro-online/game"
-	s "github.com/chiendo97/caro-online/socket"
+	"github.com/chiendo97/caro-online/internal/game"
+	s "github.com/chiendo97/caro-online/internal/socket"
 )
 
 type Hub struct {
-	core *coreServer
+	core *CoreServer
 	key  string
 
 	game    game.Game
@@ -30,7 +30,7 @@ func (hub *Hub) Unregister(s *s.Socket) {
 	hub.unregister <- s
 }
 
-func InitHub(core *coreServer, key string) *Hub {
+func InitHub(core *CoreServer, key string) *Hub {
 
 	return &Hub{
 		core:    core,
