@@ -48,11 +48,9 @@ func main() {
 
 	var hub = client.InitHub()
 	var socket = socket.InitSocket(c, &hub)
-	hub.Socket = &socket
+	hub.Socket = socket
 
 	go hub.Run()
-	go socket.Read()
-	go socket.Write()
 
 	// === take interrupt
 	interrupt := make(chan os.Signal, 1)

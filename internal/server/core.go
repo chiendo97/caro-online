@@ -23,36 +23,36 @@ func InitMessage(conn *websocket.Conn, gameId string) msgServer {
 }
 
 type CoreServer struct {
-	hubs          map[string]*Hub
+	hubs          map[string]*hubG
 	availableHubs chan string
 
 	FindGame   chan msgServer
 	JoinGame   chan msgServer
 	CreateGame chan msgServer
 
-	register   chan *Hub
-	unregister chan *Hub
+	register   chan *hubG
+	unregister chan *hubG
 
 	done chan int
 }
 
 func InitCore() *CoreServer {
 	return &CoreServer{
-		hubs:          make(map[string]*Hub),
+		hubs:          make(map[string]*hubG),
 		availableHubs: make(chan string, 5),
 
 		FindGame:   make(chan msgServer),
 		JoinGame:   make(chan msgServer),
 		CreateGame: make(chan msgServer),
 
-		register:   make(chan *Hub),
-		unregister: make(chan *Hub),
+		register:   make(chan *hubG),
+		unregister: make(chan *hubG),
 
 		done: make(chan int),
 	}
 }
 
-func (core *CoreServer) createHub(msg msgServer) string {
+func (core *CoreServer) createHub(msg msgServer) {
 	var gameId = uuid.New().String()[:8]
 
 	_, ok := core.hubs[gameId]
@@ -61,14 +61,14 @@ func (core *CoreServer) createHub(msg msgServer) string {
 		log.Panicln("Key duplicate: ", gameId, msg.conn.RemoteAddr())
 	}
 
-	var hub = InitHub(core, gameId)
+	var hub = initHub(core, gameId)
 	go hub.run()
 
 	core.hubs[gameId] = hub
 
 	core.subscribe(hub)
 
-	return hub.key
+	hub.register <- socket.InitSocket(msg.conn, hub)
 }
 
 func (core *CoreServer) joinHub(msg msgServer) {
@@ -76,45 +76,51 @@ func (core *CoreServer) joinHub(msg msgServer) {
 	hub, ok := core.hubs[msg.gameId]
 
 	if !ok {
-		log.Println("core: hub not available - ", msg.gameId, msg.conn.RemoteAddr())
+		log.Println("core: hub not found - ", msg.gameId, msg.conn.RemoteAddr())
 		msg.conn.WriteMessage(websocket.CloseMessage, []byte{})
 		return
 	}
 
-	var s = socket.InitSocket(msg.conn, hub)
-	hub.register <- &s
-
-	go s.Read()
-	go s.Write()
-
+	hub.register <- socket.InitSocket(msg.conn, hub)
 }
 func (core *CoreServer) findHub(msg msgServer) {
-	var tick = time.After(3 * time.Second)
 
-	for {
-		select {
-		case gameId := <-core.availableHubs:
-			msg.gameId = gameId
-			_, ok := core.hubs[msg.gameId]
-			if ok {
-				core.joinHub(msg)
-				return
+	go func() {
+		for {
+			select {
+			case gameID := <-core.availableHubs:
+				if _, ok := core.hubs[gameID]; ok {
+					msg.gameId = gameID
+					select {
+					case core.JoinGame <- msg:
+						return
+					case <-time.After(3 * time.Second):
+						log.Panicf("core: Can't join game %s", msg.conn.RemoteAddr())
+					}
+				}
+			case <-time.After(3 * time.Second):
+				select {
+				case core.CreateGame <- msg:
+					return
+				case <-time.After(3 * time.Second):
+					log.Panicf("core: Can't create game %s", msg.conn.RemoteAddr())
+				}
 			}
-		case <-tick:
-			var gameId = core.createHub(msg)
-			msg.gameId = gameId
-			core.joinHub(msg)
-			return
 		}
-	}
-
+	}()
 }
 
-func (core *CoreServer) subscribe(hub *Hub) {
-	core.availableHubs <- hub.key
+func (core *CoreServer) subscribe(hub *hubG) {
+	go func() {
+		select {
+		case core.availableHubs <- hub.key:
+		case <-time.After(3 * time.Second):
+			log.Panicf("core: Can't subscribe hub %s", hub.key)
+		}
+	}()
 }
 
-func (core *CoreServer) unsubscribe(hub *Hub) {
+func (core *CoreServer) unsubscribe(hub *hubG) {
 
 	delete(core.hubs, hub.key)
 }

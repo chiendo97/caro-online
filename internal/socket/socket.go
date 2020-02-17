@@ -22,12 +22,17 @@ type Socket struct {
 	Message chan Message
 }
 
-func InitSocket(conn *websocket.Conn, hub Hub) Socket {
-	return Socket{
+func InitSocket(conn *websocket.Conn, hub Hub) *Socket {
+	var socket = Socket{
 		Conn:    conn,
 		Hub:     hub,
 		Message: make(chan Message),
 	}
+
+	go socket.Read()
+	go socket.Write()
+
+	return &socket
 }
 
 func (c *Socket) Write() {
@@ -41,7 +46,7 @@ func (c *Socket) Write() {
 
 			if !ok {
 				log.Println("socket: write closed")
-				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+				// c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 

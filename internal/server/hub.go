@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -8,31 +9,29 @@ import (
 	s "github.com/chiendo97/caro-online/internal/socket"
 )
 
-type Hub struct {
-	core *CoreServer
-	key  string
-
+type hubG struct {
+	core    *CoreServer
+	key     string
 	game    game.Game
 	players map[*s.Socket]int
 
 	message    chan s.Message
 	register   chan *s.Socket
 	unregister chan *s.Socket
-
-	done chan int
+	done       chan int
 }
 
-func (hub *Hub) ReceiveMsg(msg s.Message) {
+func (hub *hubG) ReceiveMsg(msg s.Message) {
 	hub.message <- msg
 }
 
-func (hub *Hub) Unregister(s *s.Socket) {
+func (hub *hubG) Unregister(s *s.Socket) {
 	hub.unregister <- s
 }
 
-func InitHub(core *CoreServer, key string) *Hub {
+func initHub(core *CoreServer, key string) *hubG {
 
-	return &Hub{
+	return &hubG{
 		core:    core,
 		key:     key,
 		message: make(chan s.Message),
@@ -49,40 +48,42 @@ func InitHub(core *CoreServer, key string) *Hub {
 
 func sendMessage(socket *s.Socket, msg s.Message) {
 	socket.Message <- msg
-	log.Printf("hub: send (%s) to (%s)", msg, socket.Conn.RemoteAddr())
+	// go func() {
+	// 	select {
+	// 	case socket.Message <- msg:
+	// 		log.Printf("hub: send (%s) to (%s)", msg, socket.Conn.RemoteAddr())
+	// 	}
+	// }()
 }
 
-func (hub *Hub) broadcast() {
+func (hub *hubG) broadcast() {
 
 	if len(hub.players) < 2 {
-		hub.transmitMsgToAll(s.GenerateErrMsg("hub (" + hub.key + ") wait for players"))
-		return
+		var msg = s.GenerateErrMsg(fmt.Sprintf("hub %s: wait for players", hub.key))
+		for socket := range hub.players {
+			sendMessage(socket, msg)
+		}
+	} else {
+		for socket := range hub.players {
+			var game = hub.game
+			game.WhoAmI = hub.players[socket]
+			sendMessage(socket, s.GenerateGameMsg(game))
+		}
 	}
 
-	for socket := range hub.players {
-		var game = hub.game
-		game.WhoAmI = hub.players[socket]
-		sendMessage(socket, s.GenerateGameMsg(game))
-	}
 }
 
-func (hub *Hub) transmitMsgToAll(msg s.Message) {
-	for socket := range hub.players {
-		sendMessage(socket, msg)
-	}
-}
-
-func (hub *Hub) handleMsg(msg s.Message) {
+func (hub *hubG) handleMsg(msg s.Message) {
 
 	if msg.Kind != s.MoveMessage {
-		log.Panicln("hub: No msg kind case", msg)
+		log.Panicf("hub %s: No msg kind case %s", hub.key, msg)
 		return
 	}
 
 	game, err := hub.game.TakeMove(msg.Move)
 
 	if err != nil {
-		log.Println("hub: game error - ", err)
+		log.Printf("hub %s: game error - %s", hub.key, err)
 	} else {
 		hub.game = game
 	}
@@ -90,16 +91,19 @@ func (hub *Hub) handleMsg(msg s.Message) {
 	hub.broadcast()
 
 	if hub.game.Status != -1 {
-		var tick = time.After(5 * time.Second)
-		<-tick
-		close(hub.done)
-		hub.core.unregister <- hub
+		go func() {
+			select {
+			case <-time.After(5 * time.Second):
+				hub.done <- 1
+				hub.core.unregister <- hub
+			}
+		}()
 	}
 }
 
-func (hub *Hub) subscribe(socket *s.Socket) {
+func (hub *hubG) subscribe(socket *s.Socket) {
 	if len(hub.players) == 2 {
-		log.Println("hub: room is full", socket.Conn.RemoteAddr().String())
+		log.Printf("hub %s: room is full %s", hub.key, socket.Conn.RemoteAddr().String())
 		close(socket.Message)
 		return
 	}
@@ -109,36 +113,37 @@ func (hub *Hub) subscribe(socket *s.Socket) {
 		id = 1 - otherId
 	}
 
-	log.Printf("hub: take new socket (%s) as (%d)", socket.Conn.RemoteAddr(), id)
+	log.Printf("hub %s: take new socket %s as player %d", hub.key, socket.Conn.RemoteAddr(), id)
 	hub.players[socket] = id
 
 	hub.broadcast()
 }
 
-func (hub *Hub) unsubscribe(socket *s.Socket) {
+func (hub *hubG) unsubscribe(socket *s.Socket) {
 	if _, ok := hub.players[socket]; ok {
-		log.Println("hub: Player left:", socket.Conn.RemoteAddr())
+		log.Printf("hub %s: Player %s left", hub.key, socket.Conn.RemoteAddr())
 
 		delete(hub.players, socket)
 		close(socket.Message)
 
 		hub.broadcast()
 
-		if len(hub.players) == 1 {
-			hub.core.register <- hub
-		} else {
-			hub.core.unregister <- hub
-		}
+		go func() {
+			if len(hub.players) == 1 {
+				select {
+				case hub.core.register <- hub:
+				}
+			} else {
+				select {
+				case hub.core.unregister <- hub:
+				}
+			}
+		}()
+
 	}
 }
 
-func (hub *Hub) run() {
-
-	// defer func() {
-	// 	close(hub.message)
-	// 	close(hub.register)
-	// 	close(hub.unregister)
-	// }()
+func (hub *hubG) run() {
 
 	for {
 		select {

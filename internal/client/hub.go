@@ -3,6 +3,7 @@ package client
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/chiendo97/caro-online/internal/game"
 	s "github.com/chiendo97/caro-online/internal/socket"
@@ -70,7 +71,7 @@ func (hub *Hub) Run() {
 
 						select {
 						case hub.Socket.Message <- msg:
-						default:
+						case <-time.After(3 * time.Second):
 							log.Panicln("Cant send move to socket")
 						}
 
