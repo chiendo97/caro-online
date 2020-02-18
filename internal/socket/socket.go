@@ -6,38 +6,40 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type Hub interface {
+type hubG interface {
 	ReceiveMsg(msg Message)
 	Unregister(s *Socket)
 }
 
 type Socket struct {
-	// Hub for behide execution
-	Hub Hub
+	hub hubG
 
-	// The websocket connection.
-	Conn *websocket.Conn
+	conn *websocket.Conn
 
 	// receive Message from hub and send thorough Conn
 	Message chan Message
 }
 
-func InitSocket(conn *websocket.Conn, hub Hub) *Socket {
+func InitSocket(conn *websocket.Conn, hub hubG) *Socket {
 	var socket = Socket{
-		Conn:    conn,
-		Hub:     hub,
+		conn:    conn,
+		hub:     hub,
 		Message: make(chan Message),
 	}
 
-	go socket.Read()
-	go socket.Write()
+	go socket.read()
+	go socket.write()
 
 	return &socket
 }
 
-func (c *Socket) Write() {
+func (c *Socket) GetSocketIPAddress() string {
+	return c.conn.RemoteAddr().String()
+}
+
+func (c *Socket) write() {
 	defer func() {
-		c.Conn.Close()
+		c.conn.Close()
 	}()
 
 	for {
@@ -46,11 +48,10 @@ func (c *Socket) Write() {
 
 			if !ok {
 				log.Println("socket: write closed")
-				// c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 
-			err := c.Conn.WriteJSON(msg)
+			err := c.conn.WriteJSON(msg)
 			if err != nil {
 				log.Printf("socket: error write socket %v", err)
 				return
@@ -59,15 +60,15 @@ func (c *Socket) Write() {
 	}
 }
 
-func (c *Socket) Read() {
+func (c *Socket) read() {
 	defer func() {
-		c.Conn.Close()
-		c.Hub.Unregister(c)
+		c.conn.Close()
+		c.hub.Unregister(c)
 	}()
 
 	for {
 		var msg Message
-		err := c.Conn.ReadJSON(&msg)
+		err := c.conn.ReadJSON(&msg)
 
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
@@ -78,6 +79,6 @@ func (c *Socket) Read() {
 			return
 		}
 
-		go c.Hub.ReceiveMsg(msg)
+		go c.hub.ReceiveMsg(msg)
 	}
 }

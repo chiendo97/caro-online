@@ -10,25 +10,13 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type msgServer struct {
-	conn   *websocket.Conn
-	gameId string
-}
-
-func InitMessage(conn *websocket.Conn, gameId string) msgServer {
-	return msgServer{
-		conn:   conn,
-		gameId: gameId,
-	}
-}
-
 type CoreServer struct {
 	hubs          map[string]*hubG
 	availableHubs chan string
 
-	FindGame   chan msgServer
-	JoinGame   chan msgServer
-	CreateGame chan msgServer
+	FindGame   chan msgStruct
+	JoinGame   chan msgStruct
+	CreateGame chan msgStruct
 
 	register   chan *hubG
 	unregister chan *hubG
@@ -36,23 +24,28 @@ type CoreServer struct {
 	done chan int
 }
 
-func InitCore() *CoreServer {
-	return &CoreServer{
+func InitAndRunCore() *CoreServer {
+
+	var core = CoreServer{
 		hubs:          make(map[string]*hubG),
 		availableHubs: make(chan string, 5),
 
-		FindGame:   make(chan msgServer),
-		JoinGame:   make(chan msgServer),
-		CreateGame: make(chan msgServer),
+		FindGame:   make(chan msgStruct),
+		JoinGame:   make(chan msgStruct),
+		CreateGame: make(chan msgStruct),
 
 		register:   make(chan *hubG),
 		unregister: make(chan *hubG),
 
 		done: make(chan int),
 	}
+
+	go core.run()
+
+	return &core
 }
 
-func (core *CoreServer) createHub(msg msgServer) {
+func (core *CoreServer) createHub(msg msgStruct) {
 	var gameId = uuid.New().String()[:8]
 
 	_, ok := core.hubs[gameId]
@@ -62,16 +55,17 @@ func (core *CoreServer) createHub(msg msgServer) {
 	}
 
 	var hub = initHub(core, gameId)
-	go hub.run()
 
 	core.hubs[gameId] = hub
 
 	core.subscribe(hub)
 
-	hub.register <- socket.InitSocket(msg.conn, hub)
+	go func() {
+		hub.register <- socket.InitSocket(msg.conn, hub)
+	}()
 }
 
-func (core *CoreServer) joinHub(msg msgServer) {
+func (core *CoreServer) joinHub(msg msgStruct) {
 
 	hub, ok := core.hubs[msg.gameId]
 
@@ -81,30 +75,26 @@ func (core *CoreServer) joinHub(msg msgServer) {
 		return
 	}
 
-	hub.register <- socket.InitSocket(msg.conn, hub)
+	go func() {
+		hub.register <- socket.InitSocket(msg.conn, hub)
+	}()
 }
-func (core *CoreServer) findHub(msg msgServer) {
+
+func (core *CoreServer) findHub(msg msgStruct) {
 
 	go func() {
 		for {
 			select {
 			case gameID := <-core.availableHubs:
-				if _, ok := core.hubs[gameID]; ok {
-					msg.gameId = gameID
-					select {
-					case core.JoinGame <- msg:
-						return
-					case <-time.After(3 * time.Second):
-						log.Panicf("core: Can't join game %s", msg.conn.RemoteAddr())
-					}
+				if _, ok := core.hubs[gameID]; !ok {
+					continue
 				}
+				msg.gameId = gameID
+				core.JoinGame <- msg
+				return
 			case <-time.After(3 * time.Second):
-				select {
-				case core.CreateGame <- msg:
-					return
-				case <-time.After(3 * time.Second):
-					log.Panicf("core: Can't create game %s", msg.conn.RemoteAddr())
-				}
+				core.CreateGame <- msg
+				return
 			}
 		}
 	}()
@@ -112,11 +102,7 @@ func (core *CoreServer) findHub(msg msgServer) {
 
 func (core *CoreServer) subscribe(hub *hubG) {
 	go func() {
-		select {
-		case core.availableHubs <- hub.key:
-		case <-time.After(3 * time.Second):
-			log.Panicf("core: Can't subscribe hub %s", hub.key)
-		}
+		core.availableHubs <- hub.key
 	}()
 }
 
@@ -125,7 +111,7 @@ func (core *CoreServer) unsubscribe(hub *hubG) {
 	delete(core.hubs, hub.key)
 }
 
-func (core *CoreServer) Run() {
+func (core *CoreServer) run() {
 	for {
 		select {
 		case <-core.done:

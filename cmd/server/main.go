@@ -42,20 +42,19 @@ func joinHubHandler(core *server.CoreServer, w http.ResponseWriter, r *http.Requ
 
 func main() {
 
-	var serverCore = server.InitCore()
-	go serverCore.Run()
+	var core = server.InitAndRunCore()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Welcome to caro online. Please come to https://github.com/chiendo97/caro-online for introduction")
 	})
 	http.HandleFunc("/create_hub", func(w http.ResponseWriter, r *http.Request) {
-		createHubHandler(serverCore, w, r)
+		createHubHandler(core, w, r)
 	})
 	http.HandleFunc("/join_hub", func(w http.ResponseWriter, r *http.Request) {
-		joinHubHandler(serverCore, w, r)
+		joinHubHandler(core, w, r)
 	})
 	http.HandleFunc("/find_hub", func(w http.ResponseWriter, r *http.Request) {
-		findHubHandler(serverCore, w, r)
+		findHubHandler(core, w, r)
 	})
 
 	var port = os.Getenv("PORT")

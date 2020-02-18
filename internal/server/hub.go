@@ -31,7 +31,7 @@ func (hub *hubG) Unregister(s *s.Socket) {
 
 func initHub(core *CoreServer, key string) *hubG {
 
-	return &hubG{
+	var hub = hubG{
 		core:    core,
 		key:     key,
 		message: make(chan s.Message),
@@ -44,16 +44,10 @@ func initHub(core *CoreServer, key string) *hubG {
 
 		done: make(chan int),
 	}
-}
 
-func sendMessage(socket *s.Socket, msg s.Message) {
-	socket.Message <- msg
-	// go func() {
-	// 	select {
-	// 	case socket.Message <- msg:
-	// 		log.Printf("hub: send (%s) to (%s)", msg, socket.Conn.RemoteAddr())
-	// 	}
-	// }()
+	go hub.run()
+
+	return &hub
 }
 
 func (hub *hubG) broadcast() {
@@ -61,13 +55,16 @@ func (hub *hubG) broadcast() {
 	if len(hub.players) < 2 {
 		var msg = s.GenerateErrMsg(fmt.Sprintf("hub %s: wait for players", hub.key))
 		for socket := range hub.players {
-			sendMessage(socket, msg)
+			socket.Message <- msg
+			log.Printf("hub: send (%s) to (%s)", msg, socket.GetSocketIPAddress())
 		}
 	} else {
 		for socket := range hub.players {
 			var game = hub.game
 			game.WhoAmI = hub.players[socket]
-			sendMessage(socket, s.GenerateGameMsg(game))
+			var msg = s.GenerateGameMsg(game)
+			socket.Message <- msg
+			log.Printf("hub: send (%s) to (%s)", msg, socket.GetSocketIPAddress())
 		}
 	}
 
@@ -91,19 +88,17 @@ func (hub *hubG) handleMsg(msg s.Message) {
 	hub.broadcast()
 
 	if hub.game.Status != -1 {
-		go func() {
-			select {
-			case <-time.After(5 * time.Second):
-				hub.done <- 1
-				hub.core.unregister <- hub
-			}
-		}()
+		select {
+		case <-time.After(5 * time.Second):
+			hub.core.unregister <- hub
+			close(hub.done)
+		}
 	}
 }
 
 func (hub *hubG) subscribe(socket *s.Socket) {
 	if len(hub.players) == 2 {
-		log.Printf("hub %s: room is full %s", hub.key, socket.Conn.RemoteAddr().String())
+		log.Printf("hub %s: room is full %s", hub.key, socket.GetSocketIPAddress())
 		close(socket.Message)
 		return
 	}
@@ -113,7 +108,7 @@ func (hub *hubG) subscribe(socket *s.Socket) {
 		id = 1 - otherId
 	}
 
-	log.Printf("hub %s: take new socket %s as player %d", hub.key, socket.Conn.RemoteAddr(), id)
+	log.Printf("hub %s: take new socket %s as player %d", hub.key, socket.GetSocketIPAddress(), id)
 	hub.players[socket] = id
 
 	hub.broadcast()
@@ -121,7 +116,7 @@ func (hub *hubG) subscribe(socket *s.Socket) {
 
 func (hub *hubG) unsubscribe(socket *s.Socket) {
 	if _, ok := hub.players[socket]; ok {
-		log.Printf("hub %s: Player %s left", hub.key, socket.Conn.RemoteAddr())
+		log.Printf("hub %s: Player %s left", hub.key, socket.GetSocketIPAddress())
 
 		delete(hub.players, socket)
 		close(socket.Message)
