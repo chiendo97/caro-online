@@ -123,17 +123,11 @@ func (hub *hubG) unsubscribe(socket *s.Socket) {
 
 		hub.broadcast()
 
-		go func() {
-			if len(hub.players) == 1 {
-				select {
-				case hub.core.register <- hub:
-				}
-			} else {
-				select {
-				case hub.core.unregister <- hub:
-				}
-			}
-		}()
+		if len(hub.players) == 1 {
+			hub.core.register <- hub
+		} else {
+			hub.core.unregister <- hub
+		}
 
 	}
 }

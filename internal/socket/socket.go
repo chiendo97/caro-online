@@ -6,17 +6,12 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type hubG interface {
-	ReceiveMsg(msg Message)
-	Unregister(s *Socket)
-}
-
 type Socket struct {
 	hub hubG
 
 	conn *websocket.Conn
 
-	// receive Message from hub and send thorough Conn
+	// Message is a chan handling msg or send msg through socket
 	Message chan Message
 }
 
@@ -33,6 +28,7 @@ func InitSocket(conn *websocket.Conn, hub hubG) *Socket {
 	return &socket
 }
 
+// GetSocketIPAddress returns ip address of socket
 func (c *Socket) GetSocketIPAddress() string {
 	return c.conn.RemoteAddr().String()
 }
