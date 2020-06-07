@@ -1,7 +1,6 @@
 package socket
 
 import (
-	"errors"
 	"log"
 
 	"github.com/gorilla/websocket"
@@ -21,8 +20,7 @@ type Socket struct {
 	Message chan Message
 }
 
-// InitAndRunSocket || xxx
-func InitAndRunSocket(conn *websocket.Conn, hub hubG) *Socket {
+func InitSocket(conn *websocket.Conn, hub hubG) *Socket {
 	var socket = Socket{
 		conn:    conn,
 		hub:     hub,
@@ -35,23 +33,6 @@ func InitAndRunSocket(conn *websocket.Conn, hub hubG) *Socket {
 	return &socket
 }
 
-func (c *Socket) RegisterHub(hub hubG) {
-	c.hub = hub
-}
-
-func (c *Socket) Run() error {
-
-	if c.hub == nil {
-		return errors.New("Hub is missing")
-	}
-
-	go c.read()
-	go c.write()
-
-	return nil
-}
-
-// GetSocketIPAddress returns ip address of socket
 func (c *Socket) GetSocketIPAddress() string {
 	return c.conn.RemoteAddr().String()
 }
