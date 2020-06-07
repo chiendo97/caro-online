@@ -61,7 +61,7 @@ func (core *CoreServer) createHub(msg msgStruct) {
 	core.subscribe(hub)
 
 	go func() {
-		hub.register <- socket.InitSocket(msg.conn, hub)
+		hub.register <- socket.InitAndRunSocket(msg.conn, hub)
 	}()
 }
 
@@ -76,7 +76,7 @@ func (core *CoreServer) joinHub(msg msgStruct) {
 	}
 
 	go func() {
-		hub.register <- socket.InitSocket(msg.conn, hub)
+		hub.register <- socket.InitAndRunSocket(msg.conn, hub)
 	}()
 }
 
