@@ -26,10 +26,6 @@ func InitAndRunHub() *Hub {
 		message:      make(chan socket.Message),
 		inputChannel: InpupChannel(),
 	}
-
-	go hub.Run()
-
-	return &hub
 }
 
 func (hub *Hub) ReceiveMsg(msg socket.Message) {
@@ -88,21 +84,8 @@ func (hub *Hub) handleMsg(msg socket.Message) {
 				}()
 
 			default:
-				fmt.Println("Enemy turn.")
+				log.Panicln("Invalid request kind:", msg)
 			}
-		}
-
-	default:
-		log.Panicln("Invalid msg:", msg)
-	}
-}
-
-func (hub *Hub) Run() {
-
-	for {
-		select {
-		case msg := <-hub.message:
-			hub.handleMsg(msg)
 		}
 	}
 }

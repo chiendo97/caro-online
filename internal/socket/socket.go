@@ -7,12 +7,17 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type hubG interface {
+	ReceiveMsg(msg Message)
+	Unregister(s *Socket)
+}
+
 type Socket struct {
 	hub hubG
 
 	conn *websocket.Conn
 
-	// Message is a chan handling msg or send msg through socket
+	// receive Message from hub and send thorough Conn
 	Message chan Message
 }
 

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -16,14 +15,14 @@ import (
 func main() {
 	var addr = os.Getenv("host")
 	var port = os.Getenv("port")
-	if port == "" {
-		port = "8080"
-	}
 	if addr == "" {
-		addr = "localhost"
+		if port == "" {
+			port = "8080"
+		}
+		addr = "localhost:" + port
 	}
 
-	log.Printf("Client is connecting to %s:%s", addr, port)
+	log.Printf("Client is connecting to %s", addr)
 
 	// === Take options
 	var args = os.Args
@@ -31,12 +30,12 @@ func main() {
 
 	switch len(args) {
 	case 1:
-		host = fmt.Sprintf("ws://%s:%s/find_hub", addr, port)
+		host = "ws://" + addr + "/find_hub"
 	case 2:
-		host = fmt.Sprintf("ws://%s:%s/create_hub", addr, host)
+		host = "ws://" + addr + "/create_hub"
 	case 3:
-		var hubID = args[2]
-		host = fmt.Sprintf("ws://%s:%s/join_hub?hub=%s", addr, host, hubID)
+		var param = args[2]
+		host = "ws://" + addr + "/join_hub" + "?" + "hub=" + param
 	default:
 		log.Fatalln("Invalid option")
 	}
