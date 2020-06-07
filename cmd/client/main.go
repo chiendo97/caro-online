@@ -42,13 +42,13 @@ func main() {
 	}
 
 	// === Init socket and hub
-	var c, _, err = websocket.DefaultDialer.Dial(host, nil)
+	c, _, err := websocket.DefaultDialer.Dial(host, nil)
 	if err != nil {
 		log.Fatal("Dial error: ", err)
 	}
 
-	var hub = client.InitHub()
-	hub.Socket = socket.InitSocket(c, hub)
+	hub := client.InitAndRunHub()
+	hub.Socket = socket.InitAndRunSocket(c, hub)
 
 	// === take interrupt
 	interrupt := make(chan os.Signal, 1)
@@ -58,7 +58,5 @@ func main() {
 		case <-interrupt:
 			log.Fatalln("Exit client")
 		}
-
 	}
-
 }
