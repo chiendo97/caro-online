@@ -2,26 +2,39 @@ package socket
 
 import (
 	"errors"
-	"log"
 
 	"github.com/gorilla/websocket"
+	log "github.com/sirupsen/logrus"
 )
 
+type SocketI interface {
+	SendMessage(msg Message)
+	CloseMessage()
+	RegisterHub(hub Hub)
+}
+
 type Socket struct {
-	hub hubG
+	hub Hub
 
 	conn *websocket.Conn
 
-	// Message is a chan handling msg or send msg through socket
-	Message chan Message
+	msgC chan Message
+}
+
+func (s *Socket) SendMessage(msg Message) {
+	s.msgC <- msg
+}
+
+func (s *Socket) CloseMessage() {
+	close(s.msgC)
 }
 
 // InitAndRunSocket || xxx
-func InitAndRunSocket(conn *websocket.Conn, hub hubG) *Socket {
+func InitAndRunSocket(conn *websocket.Conn, hub Hub) *Socket {
 	var socket = Socket{
-		conn:    conn,
-		hub:     hub,
-		Message: make(chan Message),
+		conn: conn,
+		hub:  hub,
+		msgC: make(chan Message),
 	}
 
 	go socket.read()
@@ -30,7 +43,7 @@ func InitAndRunSocket(conn *websocket.Conn, hub hubG) *Socket {
 	return &socket
 }
 
-func (c *Socket) RegisterHub(hub hubG) {
+func (c *Socket) RegisterHub(hub Hub) {
 	c.hub = hub
 }
 
@@ -58,16 +71,16 @@ func (c *Socket) write() {
 
 	for {
 		select {
-		case msg, ok := <-c.Message:
+		case msg, ok := <-c.msgC:
 
 			if !ok {
-				log.Println("socket: write closed")
+				log.Info("socket: write closed")
 				return
 			}
 
 			err := c.conn.WriteJSON(msg)
 			if err != nil {
-				log.Printf("socket: error write socket %v", err)
+				log.Infof("socket: error write socket %v", err)
 				return
 			}
 		}
@@ -77,7 +90,7 @@ func (c *Socket) write() {
 func (c *Socket) read() {
 	defer func() {
 		c.conn.Close()
-		c.hub.Unregister(c)
+		c.hub.UnRegister(c)
 	}()
 
 	for {
@@ -86,13 +99,13 @@ func (c *Socket) read() {
 
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("socket: error read socket %v", err)
+				log.Infof("socket: error read socket %v", err)
 			} else {
-				log.Println("socket: read closed")
+				log.Info("socket: read closed")
 			}
 			return
 		}
 
-		go c.hub.ReceiveMsg(msg)
+		go c.hub.HandleMsg(msg)
 	}
 }

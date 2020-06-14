@@ -2,47 +2,51 @@ package server
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/chiendo97/caro-online/internal/game"
-	s "github.com/chiendo97/caro-online/internal/socket"
+	soc "github.com/chiendo97/caro-online/internal/socket"
+	log "github.com/sirupsen/logrus"
 )
 
-type hubG struct {
-	core    *CoreServer
+type Hub struct {
+	core    *coreServer
 	key     string
 	game    game.Game
-	players map[*s.Socket]int
+	players map[*soc.Socket]game.Player
 
-	message    chan s.Message
-	register   chan *s.Socket
-	unregister chan *s.Socket
-	done       chan int
+	msgC   chan soc.Message
+	regC   chan *soc.Socket
+	unregC chan *soc.Socket
+	doneC  chan int
 }
 
-func (hub *hubG) ReceiveMsg(msg s.Message) {
-	hub.message <- msg
+func (hub *Hub) HandleMsg(msg soc.Message) {
+	hub.msgC <- msg
 }
 
-func (hub *hubG) Unregister(s *s.Socket) {
-	hub.unregister <- s
+func (hub *Hub) UnRegister(s *soc.Socket) {
+	hub.unregC <- s
 }
 
-func initHub(core *CoreServer, key string) *hubG {
+func (hub *Hub) Register(s *soc.Socket) {
+	hub.regC <- s
+}
 
-	var hub = hubG{
-		core:    core,
-		key:     key,
-		message: make(chan s.Message),
+func initHub(core *coreServer, key string) *Hub {
+
+	var hub = Hub{
+		core: core,
+		key:  key,
+		msgC: make(chan soc.Message),
 
 		game:    game.InitGame(key),
-		players: make(map[*s.Socket]int),
+		players: make(map[*soc.Socket]game.Player),
 
-		register:   make(chan *s.Socket),
-		unregister: make(chan *s.Socket),
+		regC:   make(chan *soc.Socket),
+		unregC: make(chan *soc.Socket),
 
-		done: make(chan int),
+		doneC: make(chan int),
 	}
 
 	go hub.run()
@@ -50,101 +54,103 @@ func initHub(core *CoreServer, key string) *hubG {
 	return &hub
 }
 
-func (hub *hubG) broadcast() {
+func (hub *Hub) broadcast() {
 
 	if len(hub.players) < 2 {
-		var msg = s.GenerateErrMsg(fmt.Sprintf("hub %s: wait for players", hub.key))
+		var msg = soc.GenerateAnnouncementMsg(fmt.Sprintf("hub %s: wait for players", hub.key))
 		for socket := range hub.players {
-			socket.Message <- msg
-			log.Printf("hub: send (%s) to (%s)", msg, socket.GetSocketIPAddress())
+			socket.SendMessage(msg)
+			log.Infof("hub: send (%s) to (%s)", msg, socket.GetSocketIPAddress())
 		}
 	} else {
-		for socket := range hub.players {
+		for socket, player := range hub.players {
 			var game = hub.game
-			game.WhoAmI = hub.players[socket]
-			var msg = s.GenerateGameMsg(game)
-			socket.Message <- msg
-			log.Printf("hub: send (%s) to (%s)", msg, socket.GetSocketIPAddress())
+			var msg = soc.GenerateGameMsg(player, game)
+			socket.SendMessage(msg)
+			log.Infof("hub: send (%s) to (%s)", msg, socket.GetSocketIPAddress())
 		}
 	}
 
 }
 
-func (hub *hubG) handleMsg(msg s.Message) {
+func (hub *Hub) handleMsg(msg soc.Message) {
 
-	if msg.Kind != s.MoveMessage {
-		log.Panicf("hub %s: No msg kind case %s", hub.key, msg)
+	if msg.Type != soc.MoveMessageType {
+		log.Errorf("hub %s: No msg kind case %s", hub.key, msg)
 		return
 	}
 
-	game, err := hub.game.TakeMove(msg.Move)
+	g, err := hub.game.TakeMove(msg.Move)
 
 	if err != nil {
-		log.Printf("hub %s: game error - %s", hub.key, err)
+		log.Infof("hub %s: game error - %s", hub.key, err)
 	} else {
-		hub.game = game
+		hub.game = g
 	}
 
 	hub.broadcast()
 
-	if hub.game.Status != -1 {
-		select {
-		case <-time.After(5 * time.Second):
-			hub.core.unregister <- hub
-			close(hub.done)
-		}
+	if hub.game.GetStatus() != game.Running {
+		time.Sleep(5 * time.Second)
+		hub.core.UnRegister(hub)
+		close(hub.doneC)
 	}
 }
 
-func (hub *hubG) subscribe(socket *s.Socket) {
+func (hub *Hub) subscribe(socket *soc.Socket) {
 	if len(hub.players) == 2 {
-		log.Printf("hub %s: room is full %s", hub.key, socket.GetSocketIPAddress())
-		close(socket.Message)
+		log.Infof("hub %s: room is full %s", hub.key, socket.GetSocketIPAddress())
+		socket.CloseMessage()
 		return
 	}
 
-	var id = 0
+	var player = game.XPlayer
 	for _, otherId := range hub.players {
-		id = 1 - otherId
+		switch otherId {
+		case game.XPlayer:
+			player = game.OPlayer
+		case game.OPlayer:
+			player = game.XPlayer
+		}
 	}
 
-	log.Printf("hub %s: take new socket %s as player %d", hub.key, socket.GetSocketIPAddress(), id)
-	hub.players[socket] = id
+	log.Infof("hub %s: take new socket %s as player %d", hub.key, socket.GetSocketIPAddress(), player)
+	hub.players[socket] = player
 
 	hub.broadcast()
 }
 
-func (hub *hubG) unsubscribe(socket *s.Socket) {
+func (hub *Hub) unsubscribe(socket *soc.Socket) {
 	if _, ok := hub.players[socket]; ok {
-		log.Printf("hub %s: Player %s left", hub.key, socket.GetSocketIPAddress())
+		log.Infof("hub %s: Player %s left", hub.key, socket.GetSocketIPAddress())
 
 		delete(hub.players, socket)
-		close(socket.Message)
+		socket.CloseMessage()
 
 		hub.broadcast()
 
 		if len(hub.players) == 1 {
-			hub.core.register <- hub
+			hub.core.Register(hub)
 		} else {
-			hub.core.unregister <- hub
+			hub.core.UnRegister(hub)
 		}
 
 	}
 }
 
-func (hub *hubG) run() {
+func (hub *Hub) run() {
 
 	for {
 		select {
-		case msg := <-hub.message:
+		case msg := <-hub.msgC:
 			hub.handleMsg(msg)
-		case socket := <-hub.register:
+		case socket := <-hub.regC:
 			hub.subscribe(socket)
-		case socket := <-hub.unregister:
+		case socket := <-hub.unregC:
 			hub.unsubscribe(socket)
-		case <-hub.done:
+		case <-hub.doneC:
 			for socket := range hub.players {
-				close(socket.Message)
+				socket.CloseMessage()
 			}
 			return
 		}

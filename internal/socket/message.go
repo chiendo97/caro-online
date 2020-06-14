@@ -2,7 +2,16 @@ package socket
 
 import (
 	"fmt"
+
 	"github.com/chiendo97/caro-online/internal/game"
+)
+
+type MessageType int
+
+const (
+	MoveMessageType MessageType = iota
+	GameMessageType
+	AnnouncementMessageType
 )
 
 const (
@@ -12,42 +21,45 @@ const (
 )
 
 type Message struct {
-	Kind string
+	Type MessageType
 
-	Move game.Move
-	Game game.Game
-	Msg  string
+	Player       game.Player
+	Move         game.Move
+	Game         game.Game
+	Announcement string
 }
 
 func (msg Message) String() string {
-	switch msg.Kind {
-	case MoveMessage:
+	switch msg.Type {
+	case MoveMessageType:
 		return fmt.Sprint("Move: ", msg.Move)
-	case GameMessage:
+	case GameMessageType:
 		return fmt.Sprint("Game: ", msg.Game)
-	case MsgMessage:
-		return fmt.Sprint("Msg: ", msg.Msg)
+	case AnnouncementMessageType:
+		return fmt.Sprint("Announcement: ", msg.Announcement)
 	}
-	return fmt.Sprint("Unknown msg kind: ", msg.Kind)
+
+	return fmt.Sprint("Unknown msg kind: ", msg.Type)
 }
 
 func GenerateMoveMsg(move game.Move) Message {
 	return Message{
-		Kind: MoveMessage,
+		Type: MoveMessageType,
 		Move: move,
 	}
 }
 
-func GenerateGameMsg(game game.Game) Message {
+func GenerateGameMsg(p game.Player, g game.Game) Message {
 	return Message{
-		Kind: GameMessage,
-		Game: game,
+		Type:   GameMessageType,
+		Player: p,
+		Game:   g,
 	}
 }
 
-func GenerateErrMsg(err string) Message {
+func GenerateAnnouncementMsg(message string) Message {
 	return Message{
-		Kind: MsgMessage,
-		Msg:  err,
+		Type:         AnnouncementMessageType,
+		Announcement: message,
 	}
 }

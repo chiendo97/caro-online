@@ -1,57 +1,82 @@
 package server
 
 import (
-	"log"
 	"time"
 
 	"github.com/chiendo97/caro-online/internal/socket"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
-type CoreServer struct {
-	hubs          map[string]*hubG
-	availableHubs chan string
+type CoreServer interface {
+	Run()
 
-	FindGame   chan msgStruct
-	JoinGame   chan msgStruct
-	CreateGame chan msgStruct
+	Register(hub *Hub)
+	UnRegister(hub *Hub)
 
-	register   chan *hubG
-	unregister chan *hubG
-
-	done chan int
+	FindGame(msg msgStruct)
+	JoinGame(msg msgStruct)
+	CreateGame(msg msgStruct)
 }
 
-func InitAndRunCore() *CoreServer {
+func InitCoreServer() CoreServer {
 
-	var core = CoreServer{
-		hubs:          make(map[string]*hubG),
-		availableHubs: make(chan string, 5),
+	var core = coreServer{
+		hubs:      make(map[string]*Hub),
+		availHubC: make(chan string, 5),
 
-		FindGame:   make(chan msgStruct),
-		JoinGame:   make(chan msgStruct),
-		CreateGame: make(chan msgStruct),
+		findC:   make(chan msgStruct),
+		joinC:   make(chan msgStruct),
+		createC: make(chan msgStruct),
 
-		register:   make(chan *hubG),
-		unregister: make(chan *hubG),
+		regC:   make(chan *Hub),
+		unregC: make(chan *Hub),
 
 		done: make(chan int),
 	}
 
-	go core.run()
-
 	return &core
 }
 
-func (core *CoreServer) createHub(msg msgStruct) {
+type coreServer struct {
+	hubs      map[string]*Hub
+	availHubC chan string
+
+	findC   chan msgStruct
+	joinC   chan msgStruct
+	createC chan msgStruct
+
+	regC   chan *Hub
+	unregC chan *Hub
+
+	done chan int
+}
+
+func (core *coreServer) Register(hub *Hub) {
+	core.regC <- hub
+}
+func (core *coreServer) UnRegister(hub *Hub) {
+	core.unregC <- hub
+}
+func (core *coreServer) FindGame(msg msgStruct) {
+	core.findC <- msg
+}
+func (core *coreServer) JoinGame(msg msgStruct) {
+	core.joinC <- msg
+}
+func (core *coreServer) CreateGame(msg msgStruct) {
+	core.createC <- msg
+}
+
+func (core *coreServer) createHub(msg msgStruct) {
 	var gameId = uuid.New().String()[:8]
 
 	_, ok := core.hubs[gameId]
 
 	if ok {
-		log.Panicln("Key duplicate: ", gameId, msg.conn.RemoteAddr())
+		log.Error("Key duplicate: ", gameId, msg.conn.RemoteAddr())
 	}
 
 	var hub = initHub(core, gameId)
@@ -61,79 +86,79 @@ func (core *CoreServer) createHub(msg msgStruct) {
 	core.subscribe(hub)
 
 	go func() {
-		hub.register <- socket.InitAndRunSocket(msg.conn, hub)
+		hub.Register(socket.InitAndRunSocket(msg.conn, hub))
 	}()
 }
 
-func (core *CoreServer) joinHub(msg msgStruct) {
+func (core *coreServer) joinHub(msg msgStruct) {
 
 	hub, ok := core.hubs[msg.gameId]
 
 	if !ok {
-		log.Println("core: hub not found - ", msg.gameId, msg.conn.RemoteAddr())
+		log.Info("core: hub not found - ", msg.gameId, msg.conn.RemoteAddr())
 		msg.conn.WriteMessage(websocket.CloseMessage, []byte{})
 		return
 	}
 
 	go func() {
-		hub.register <- socket.InitAndRunSocket(msg.conn, hub)
+		hub.Register(socket.InitAndRunSocket(msg.conn, hub))
 	}()
 }
 
-func (core *CoreServer) findHub(msg msgStruct) {
+func (core *coreServer) findHub(msg msgStruct) {
 
 	go func() {
 		for {
 			select {
-			case gameID := <-core.availableHubs:
+			case gameID := <-core.availHubC:
 				if _, ok := core.hubs[gameID]; !ok {
 					continue
 				}
 				msg.gameId = gameID
-				core.JoinGame <- msg
+				core.joinC <- msg
 				return
 			case <-time.After(3 * time.Second):
-				core.CreateGame <- msg
+				core.createC <- msg
 				return
 			}
 		}
 	}()
 }
 
-func (core *CoreServer) subscribe(hub *hubG) {
+func (core *coreServer) subscribe(hub *Hub) {
 	go func() {
-		core.availableHubs <- hub.key
+		core.availHubC <- hub.key
 	}()
 }
 
-func (core *CoreServer) unsubscribe(hub *hubG) {
+func (core *coreServer) unsubscribe(hub *Hub) {
 
 	delete(core.hubs, hub.key)
 }
 
-func (core *CoreServer) run() {
+func (core *coreServer) Run() {
 	for {
 		select {
 		case <-core.done:
 			return
-		case hub := <-core.register:
-			log.Printf("core: hub (%s) subscribe.", hub.key)
+		case hub := <-core.regC:
+			log.Infof("core: hub (%s) subscribe.", hub.key)
 
 			core.subscribe(hub)
-		case hub := <-core.unregister:
-			log.Printf("core: detele hub (%s)", hub.key)
+		case hub := <-core.unregC:
+			log.Infof("core: detele hub (%s)", hub.key)
 
 			core.unsubscribe(hub)
-		case msg := <-core.FindGame:
-			log.Printf("core: socket (%s) find game", msg.conn.RemoteAddr())
+		case msg := <-core.findC:
+			log.Infof("core: socket (%s) find game", msg.conn.RemoteAddr())
 
 			core.findHub(msg)
-		case msg := <-core.JoinGame:
-			log.Printf("core: socket (%s) join hub (%s)", msg.gameId, msg.gameId)
+		case msg := <-core.joinC:
+			log.Infof("core: socket (%s) join hub (%s)", msg.gameId, msg.gameId)
 
 			core.joinHub(msg)
-		case msg := <-core.CreateGame:
-			log.Printf("core: socket (%s) create hub", msg.conn.RemoteAddr())
+		case msg := <-core.createC:
+			log.Infof("core: socket (%s) create hub", msg.conn.RemoteAddr())
 
 			core.createHub(msg)
 		}

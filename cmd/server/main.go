@@ -2,66 +2,47 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"net/http"
 	"os"
+	"path"
+	"runtime"
 
-	"github.com/chiendo97/caro-online/internal/server"
-
-	"github.com/gorilla/websocket"
+	log "github.com/sirupsen/logrus"
+	"github.com/urfave/cli/v2"
 )
 
-var upgrader = websocket.Upgrader{}
+func init() {
+	log.SetFormatter(&log.TextFormatter{
+		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
+			filename := path.Base(f.File)
+			return "", fmt.Sprintf(" %s:%d", filename, f.Line)
+		},
+	})
 
-func findHubHandler(core *server.CoreServer, w http.ResponseWriter, r *http.Request) {
+	log.SetOutput(os.Stdout)
 
-	conn, _ := upgrader.Upgrade(w, r, nil)
+	log.SetLevel(log.DebugLevel)
 
-	var key = ""
-	var msg = server.InitMessage(conn, key)
-	core.FindGame <- msg
-}
-
-func createHubHandler(core *server.CoreServer, w http.ResponseWriter, r *http.Request) {
-
-	conn, _ := upgrader.Upgrade(w, r, nil)
-
-	var key = ""
-	var msg = server.InitMessage(conn, key)
-	core.CreateGame <- msg
-}
-
-func joinHubHandler(core *server.CoreServer, w http.ResponseWriter, r *http.Request) {
-
-	conn, _ := upgrader.Upgrade(w, r, nil)
-
-	var key = r.URL.Query().Get("hub")
-	var msg = server.InitMessage(conn, key)
-	core.JoinGame <- msg
+	log.SetReportCaller(true)
 }
 
 func main() {
-
-	var core = server.InitAndRunCore()
-
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "Welcome to caro online. Please come to https://github.com/chiendo97/caro-online for introduction")
-	})
-	http.HandleFunc("/create_hub", func(w http.ResponseWriter, r *http.Request) {
-		createHubHandler(core, w, r)
-	})
-	http.HandleFunc("/join_hub", func(w http.ResponseWriter, r *http.Request) {
-		joinHubHandler(core, w, r)
-	})
-	http.HandleFunc("/find_hub", func(w http.ResponseWriter, r *http.Request) {
-		findHubHandler(core, w, r)
-	})
-
-	var port = os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	app := &cli.App{
+		Name:  "caro-online",
+		Usage: "run caro-online server",
+		Flags: []cli.Flag{
+			&cli.IntFlag{
+				Name:        "port",
+				Aliases:     []string{"p"},
+				Usage:       "server `PORT`",
+				DefaultText: "8080",
+				Value:       8080,
+			},
+		},
+		Action: run,
 	}
 
-	log.Printf("Server is Running on %s port", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	err := app.Run(os.Args)
+	if err != nil {
+		log.Error(err)
+	}
 }

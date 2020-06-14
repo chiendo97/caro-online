@@ -2,61 +2,73 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
-	"os/signal"
+	"path"
+	"runtime"
 
-	"github.com/chiendo97/caro-online/internal/client"
-
-	"github.com/chiendo97/caro-online/internal/socket"
-
-	"github.com/gorilla/websocket"
+	"github.com/sirupsen/logrus"
+	"github.com/urfave/cli/v2"
 )
 
+func init() {
+	logrus.SetFormatter(&logrus.TextFormatter{
+		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
+			filename := path.Base(f.File)
+			return "", fmt.Sprintf(" %s:%d", filename, f.Line)
+		},
+	})
+
+	logrus.SetOutput(os.Stdout)
+
+	logrus.SetLevel(logrus.DebugLevel)
+
+	logrus.SetReportCaller(true)
+}
+
 func main() {
-	var addr = os.Getenv("host")
-	var port = os.Getenv("port")
-	if port == "" {
-		port = "8080"
+
+	app := &cli.App{
+		Name:  "caro-online",
+		Usage: "run caro-online client",
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "find",
+				Usage:   "Find Game",
+				Aliases: []string{"f"},
+				Value:   true,
+			},
+			&cli.BoolFlag{
+				Name:    "create",
+				Usage:   "Create Game",
+				Aliases: []string{"c"},
+				Value:   false,
+			},
+			&cli.StringFlag{
+				Name:        "join",
+				Usage:       "Join game ID",
+				Aliases:     []string{"j"},
+				DefaultText: "",
+				Value:       "",
+			},
+			&cli.StringFlag{
+				Name:        "addr",
+				Usage:       "Host location",
+				DefaultText: "localhost",
+				Value:       "localhost",
+			},
+			&cli.IntFlag{
+				Name:        "port",
+				Usage:       "Port",
+				Aliases:     []string{"p"},
+				DefaultText: "8080",
+				Value:       8080,
+			},
+		},
+		Action: run,
 	}
-	if addr == "" {
-		addr = "localhost"
-	}
 
-	log.Printf("Client is connecting to %s:%s", addr, port)
-
-	// === Take options
-	var args = os.Args
-	var host string
-
-	switch len(args) {
-	case 1:
-		host = fmt.Sprintf("ws://%s:%s/find_hub", addr, port)
-	case 2:
-		host = fmt.Sprintf("ws://%s:%s/create_hub", addr, host)
-	case 3:
-		var hubID = args[2]
-		host = fmt.Sprintf("ws://%s:%s/join_hub?hub=%s", addr, host, hubID)
-	default:
-		log.Fatalln("Invalid option")
-	}
-
-	// === Init socket and hub
-	c, _, err := websocket.DefaultDialer.Dial(host, nil)
+	err := app.Run(os.Args)
 	if err != nil {
-		log.Fatal("Dial error: ", err)
-	}
-
-	hub := client.InitAndRunHub()
-	hub.Socket = socket.InitAndRunSocket(c, hub)
-
-	// === take interrupt
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
-	for {
-		select {
-		case <-interrupt:
-			log.Fatalln("Exit client")
-		}
+		logrus.Error(err)
 	}
 }

@@ -2,8 +2,9 @@ package client
 
 import (
 	"fmt"
-	"log"
 	"strconv"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/chiendo97/caro-online/internal/game"
 	"github.com/chiendo97/caro-online/internal/socket"
@@ -12,9 +13,10 @@ import (
 type Hub struct {
 	message chan socket.Message
 
-	game game.Game
+	player game.Player
+	game   game.Game
 
-	Socket *socket.Socket
+	Socket socket.SocketI
 
 	inputLock    bool
 	inputChannel chan chan interface{}
@@ -32,37 +34,30 @@ func InitAndRunHub() *Hub {
 	return &hub
 }
 
-func (hub *Hub) ReceiveMsg(msg socket.Message) {
+func (hub *Hub) HandleMsg(msg socket.Message) {
 	hub.message <- msg
 }
 
-func (hub *Hub) Unregister(s *socket.Socket) {
-	log.Fatalln("Server disconnect")
+func (hub *Hub) UnRegister(s *socket.Socket) {
+	logrus.Fatal("Server disconnect")
 }
 
 func (hub *Hub) handleMsg(msg socket.Message) {
 
 	hub.inputLock = false
 
-	switch msg.Kind {
-	case socket.MsgMessage:
-		log.Printf("\nServer: %s\n", msg.Msg)
+	switch msg.Type {
+	case socket.AnnouncementMessageType:
+		logrus.Infof("Server: %s\n", msg.Announcement)
 
-	case socket.GameMessage:
+	case socket.GameMessageType:
+		hub.player = msg.Player
 		hub.game = msg.Game
 		hub.game.Render()
 
-		if hub.game.Status == 0 || hub.game.Status == 1 {
-			if hub.game.WhoAmI == hub.game.Status {
-				fmt.Println("You won !!!")
-			} else {
-				fmt.Println("Your opponent won, good luck next !!")
-			}
-		} else if hub.game.Status == 2 {
-			fmt.Println("Game tie!!")
-		} else {
-			switch hub.game.WhoAmI {
-			case hub.game.XFirst:
+		switch hub.game.GetStatus() {
+		case game.Running:
+			if hub.player == hub.game.Player {
 				hub.inputLock = true
 				fmt.Printf("Your turn: ")
 				go func() {
@@ -77,23 +72,30 @@ func (hub *Hub) handleMsg(msg socket.Message) {
 
 					if hub.inputLock == true {
 						var msg = socket.GenerateMoveMsg(game.Move{
-							X:    x,
-							Y:    y,
-							Turn: hub.game.WhoAmI,
+							X:      x,
+							Y:      y,
+							Player: hub.player,
 						})
 
-						hub.Socket.Message <- msg
+						hub.Socket.SendMessage(msg)
 					}
 
 				}()
-
-			default:
+			} else {
 				fmt.Println("Enemy turn.")
 			}
+		case game.XWin, game.OWin:
+			if hub.player == hub.game.GetStatus().GetPlayer() {
+				fmt.Println("You won !!!")
+			} else {
+				fmt.Println("Your opponent won, good luck next !!")
+			}
+		case game.Tie:
+			fmt.Println("Game tie!!")
 		}
 
 	default:
-		log.Panicln("Invalid msg:", msg)
+		logrus.Infof("Invalid msg:", msg)
 	}
 }
 

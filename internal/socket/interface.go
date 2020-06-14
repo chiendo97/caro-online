@@ -1,8 +1,8 @@
 package socket
 
-type hubG interface {
-	// ReceiveMsg is a function handling Msg
-	ReceiveMsg(msg Message)
-	// Unregister is a function handling when socket is closed
-	Unregister(s *Socket)
+type Hub interface {
+	// HandleMsg is a function handling Msg
+	HandleMsg(msg Message)
+	// UnRegister is a function handling when socket is closed
+	UnRegister(s *Socket)
 }
