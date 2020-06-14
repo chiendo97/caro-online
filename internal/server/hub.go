@@ -5,31 +5,31 @@ import (
 	"time"
 
 	"github.com/chiendo97/caro-online/internal/game"
-	soc "github.com/chiendo97/caro-online/internal/socket"
-	log "github.com/sirupsen/logrus"
+	"github.com/chiendo97/caro-online/internal/socket"
+	"github.com/sirupsen/logrus"
 )
 
 type Hub struct {
 	core    *coreServer
 	key     string
 	game    game.Game
-	players map[*soc.Socket]game.Player
+	players map[*socket.Socket]game.Player
 
-	msgC   chan soc.Message
-	regC   chan *soc.Socket
-	unregC chan *soc.Socket
+	msgC   chan socket.Message
+	regC   chan *socket.Socket
+	unregC chan *socket.Socket
 	doneC  chan int
 }
 
-func (hub *Hub) HandleMsg(msg soc.Message) {
+func (hub *Hub) HandleMsg(msg socket.Message) {
 	hub.msgC <- msg
 }
 
-func (hub *Hub) UnRegister(s *soc.Socket) {
+func (hub *Hub) UnRegister(s *socket.Socket) {
 	hub.unregC <- s
 }
 
-func (hub *Hub) Register(s *soc.Socket) {
+func (hub *Hub) Register(s *socket.Socket) {
 	hub.regC <- s
 }
 
@@ -38,13 +38,13 @@ func initHub(core *coreServer, key string) *Hub {
 	var hub = Hub{
 		core: core,
 		key:  key,
-		msgC: make(chan soc.Message),
+		msgC: make(chan socket.Message),
 
 		game:    game.InitGame(key),
-		players: make(map[*soc.Socket]game.Player),
+		players: make(map[*socket.Socket]game.Player),
 
-		regC:   make(chan *soc.Socket),
-		unregC: make(chan *soc.Socket),
+		regC:   make(chan *socket.Socket),
+		unregC: make(chan *socket.Socket),
 
 		doneC: make(chan int),
 	}
@@ -57,33 +57,33 @@ func initHub(core *coreServer, key string) *Hub {
 func (hub *Hub) broadcast() {
 
 	if len(hub.players) < 2 {
-		var msg = soc.GenerateAnnouncementMsg(fmt.Sprintf("hub %s: wait for players", hub.key))
+		var msg = socket.GenerateAnnouncementMsg(fmt.Sprintf("hub %s: wait for players", hub.key))
 		for socket := range hub.players {
 			socket.SendMessage(msg)
-			log.Infof("hub: send (%s) to (%s)", msg, socket.GetSocketIPAddress())
+			logrus.Infof("hub: send (%s) to (%s)", msg, socket.GetSocketIPAddress())
 		}
 	} else {
-		for socket, player := range hub.players {
+		for s, player := range hub.players {
 			var game = hub.game
-			var msg = soc.GenerateGameMsg(player, game)
-			socket.SendMessage(msg)
-			log.Infof("hub: send (%s) to (%s)", msg, socket.GetSocketIPAddress())
+			var msg = socket.GenerateGameMsg(player, game)
+			s.SendMessage(msg)
+			logrus.Infof("hub: send (%s) to (%s)", msg, s.GetSocketIPAddress())
 		}
 	}
 
 }
 
-func (hub *Hub) handleMsg(msg soc.Message) {
+func (hub *Hub) handleMsg(msg socket.Message) {
 
-	if msg.Type != soc.MoveMessageType {
-		log.Errorf("hub %s: No msg kind case %s", hub.key, msg)
+	if msg.Type != socket.MoveMessageType {
+		logrus.Errorf("hub %s: No msg kind case %s", hub.key, msg)
 		return
 	}
 
 	g, err := hub.game.TakeMove(msg.Move)
 
 	if err != nil {
-		log.Infof("hub %s: game error - %s", hub.key, err)
+		logrus.Infof("hub %s: game error - %s", hub.key, err)
 	} else {
 		hub.game = g
 	}
@@ -97,10 +97,10 @@ func (hub *Hub) handleMsg(msg soc.Message) {
 	}
 }
 
-func (hub *Hub) subscribe(socket *soc.Socket) {
+func (hub *Hub) subscribe(s *socket.Socket) {
 	if len(hub.players) == 2 {
-		log.Infof("hub %s: room is full %s", hub.key, socket.GetSocketIPAddress())
-		socket.CloseMessage()
+		logrus.Infof("hub %s: room is full %s", hub.key, s.GetSocketIPAddress())
+		s.CloseMessage()
 		return
 	}
 
@@ -114,18 +114,18 @@ func (hub *Hub) subscribe(socket *soc.Socket) {
 		}
 	}
 
-	log.Infof("hub %s: take new socket %s as player %d", hub.key, socket.GetSocketIPAddress(), player)
-	hub.players[socket] = player
+	logrus.Infof("hub %s: take new socket %s as player %d", hub.key, s.GetSocketIPAddress(), player)
+	hub.players[s] = player
 
 	hub.broadcast()
 }
 
-func (hub *Hub) unsubscribe(socket *soc.Socket) {
-	if _, ok := hub.players[socket]; ok {
-		log.Infof("hub %s: Player %s left", hub.key, socket.GetSocketIPAddress())
+func (hub *Hub) unsubscribe(s *socket.Socket) {
+	if _, ok := hub.players[s]; ok {
+		logrus.Infof("hub %s: Player %s left", hub.key, s.GetSocketIPAddress())
 
-		delete(hub.players, socket)
-		socket.CloseMessage()
+		delete(hub.players, s)
+		s.CloseMessage()
 
 		hub.broadcast()
 
