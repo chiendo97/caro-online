@@ -8,12 +8,11 @@ import (
 
 func run(c *cli.Context) error {
 	var core = server.InitCoreServer()
-
-	var service = api.InitService(core)
-
 	go func() {
 		core.Run()
 	}()
+
+	var service = api.InitService(core)
 
 	err := service.ListenAndServe(c.Int("port"))
 	if err != nil {

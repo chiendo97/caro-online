@@ -1,17 +1,16 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 
 	"github.com/chiendo97/caro-online/internal/client"
-	"github.com/chiendo97/caro-online/internal/socket"
 )
 
 func run(ctx *cli.Context) error {
@@ -32,17 +31,18 @@ func run(ctx *cli.Context) error {
 	}
 
 	if host == "" {
-		return errors.New("xxx")
+		return fmt.Errorf("")
 	}
 
 	// === Init socket and hub
 	c, _, err := websocket.DefaultDialer.Dial(host, nil)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Dial error: %v", err))
+		return fmt.Errorf("Dial error: %v", err)
 	}
 
-	hub := client.InitAndRunHub()
-	hub.Socket = socket.InitAndRunSocket(c, hub)
+	hub := client.InitHub(c)
+
+	go hub.Run()
 
 	// === take interrupt
 	interrupt := make(chan os.Signal, 1)
@@ -50,7 +50,9 @@ func run(ctx *cli.Context) error {
 	for {
 		select {
 		case <-interrupt:
-			logrus.Fatalln("Exit client")
+			hub.Stop()
+			<-time.After(1 * time.Second)
+			logrus.Info("Exit client")
 			return nil
 		}
 	}

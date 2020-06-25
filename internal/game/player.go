@@ -12,7 +12,7 @@ func (p Player) String() string {
 	return [...]string{"_", "X", "O"}[p]
 }
 
-func (p Player) swi() Player {
+func (p Player) changeTurn() Player {
 	switch p {
 	case XPlayer:
 		return OPlayer

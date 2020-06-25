@@ -13,11 +13,11 @@ type Hub struct {
 	core    *coreServer
 	key     string
 	game    game.Game
-	players map[*socket.Socket]game.Player
+	players map[socket.Socket]game.Player
 
 	msgC   chan socket.Message
-	regC   chan *socket.Socket
-	unregC chan *socket.Socket
+	regC   chan socket.Socket
+	unregC chan socket.Socket
 	doneC  chan int
 }
 
@@ -25,11 +25,11 @@ func (hub *Hub) HandleMsg(msg socket.Message) {
 	hub.msgC <- msg
 }
 
-func (hub *Hub) UnRegister(s *socket.Socket) {
+func (hub *Hub) UnRegister(s socket.Socket) {
 	hub.unregC <- s
 }
 
-func (hub *Hub) Register(s *socket.Socket) {
+func (hub *Hub) Register(s socket.Socket) {
 	hub.regC <- s
 }
 
@@ -41,10 +41,10 @@ func initHub(core *coreServer, key string) *Hub {
 		msgC: make(chan socket.Message),
 
 		game:    game.InitGame(key),
-		players: make(map[*socket.Socket]game.Player),
+		players: make(map[socket.Socket]game.Player),
 
-		regC:   make(chan *socket.Socket),
-		unregC: make(chan *socket.Socket),
+		regC:   make(chan socket.Socket),
+		unregC: make(chan socket.Socket),
 
 		doneC: make(chan int),
 	}
@@ -90,14 +90,14 @@ func (hub *Hub) handleMsg(msg socket.Message) {
 
 	hub.broadcast()
 
-	if hub.game.GetStatus() != game.Running {
+	if hub.game.Status != game.Running {
 		time.Sleep(5 * time.Second)
 		hub.core.UnRegister(hub)
 		close(hub.doneC)
 	}
 }
 
-func (hub *Hub) subscribe(s *socket.Socket) {
+func (hub *Hub) subscribe(s socket.Socket) {
 	if len(hub.players) == 2 {
 		logrus.Infof("hub %s: room is full %s", hub.key, s.GetSocketIPAddress())
 		s.CloseMessage()
@@ -120,7 +120,7 @@ func (hub *Hub) subscribe(s *socket.Socket) {
 	hub.broadcast()
 }
 
-func (hub *Hub) unsubscribe(s *socket.Socket) {
+func (hub *Hub) unsubscribe(s socket.Socket) {
 	if _, ok := hub.players[s]; ok {
 		logrus.Infof("hub %s: Player %s left", hub.key, s.GetSocketIPAddress())
 

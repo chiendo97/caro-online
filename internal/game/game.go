@@ -1,7 +1,6 @@
 package game
 
 import (
-	"errors"
 	"fmt"
 )
 
@@ -10,14 +9,6 @@ const (
 	defaultHeight = 10
 
 	defaultWinLength = 2
-
-	_Icon = "_"
-	xIcon = "X"
-	oIcon = "O"
-
-	_Type = -1
-	xType = 0
-	oType = 1
 )
 
 var row = []int{-1, -1, -1, 0, 1, 1, 1, 0}
@@ -31,13 +22,9 @@ type Game struct {
 	Player Player
 }
 
-func (g Game) GetStatus() Status {
-	return g.Status
-}
-
 type Move struct {
-	X, Y, Turn int
-	Player     Player
+	X, Y   int
+	Player Player
 }
 
 func (g Game) String() string {
@@ -65,19 +52,19 @@ func (g Game) TakeMove(move Move) (Game, error) {
 
 	// check valid x, y, t
 	if x < 0 || x >= g.Board.Width {
-		return g, errors.New("Invalid X")
+		return g, fmt.Errorf("Invalid X")
 	}
 	if y < 0 || y >= g.Board.Height {
-		return g, errors.New("Invalid Y")
+		return g, fmt.Errorf("Invalid Y")
 	}
 	if board.Cells[x][y].isFill() {
-		return g, errors.New("Cell is already filled")
+		return g, fmt.Errorf("Cell is already filled")
 	}
 
 	board.Cells[x][y] = Cell{Player: p}
 
 	g.Board = board
-	g.Player = g.Player.swi()
+	g.Player = g.Player.changeTurn()
 	g.Status = board.getStatus()
 
 	return g, nil

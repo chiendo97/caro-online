@@ -74,7 +74,6 @@ func (core *coreServer) createHub(msg msgStruct) {
 	var gameId = uuid.New().String()[:8]
 
 	_, ok := core.hubs[gameId]
-
 	if ok {
 		log.Error("Key duplicate: ", gameId, msg.conn.RemoteAddr())
 	}
@@ -154,7 +153,7 @@ func (core *coreServer) Run() {
 
 			core.findHub(msg)
 		case msg := <-core.joinC:
-			log.Infof("core: socket (%s) join hub (%s)", msg.gameId, msg.gameId)
+			log.Infof("core: socket (%s) join hub (%s)", msg.conn.RemoteAddr(), msg.gameId)
 
 			core.joinHub(msg)
 		case msg := <-core.createC:

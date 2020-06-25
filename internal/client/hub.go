@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 
 	"github.com/chiendo97/caro-online/internal/game"
@@ -16,20 +17,23 @@ type Hub struct {
 	player game.Player
 	game   game.Game
 
-	Socket socket.SocketI
+	socket socket.Socket
 
 	inputLock    bool
 	inputChannel chan chan interface{}
+
+	done chan int
 }
 
-// InitAndRunHub init new client hub
-func InitAndRunHub() *Hub {
+// InitHub init new client hub
+func InitHub(c *websocket.Conn) *Hub {
 	var hub = Hub{
 		message:      make(chan socket.Message),
 		inputChannel: InpupChannel(),
+		done:         make(chan int),
 	}
 
-	go hub.Run()
+	hub.socket = socket.InitAndRunSocket(c, &hub)
 
 	return &hub
 }
@@ -38,8 +42,8 @@ func (hub *Hub) HandleMsg(msg socket.Message) {
 	hub.message <- msg
 }
 
-func (hub *Hub) UnRegister(s *socket.Socket) {
-	logrus.Fatal("Server disconnect")
+func (hub *Hub) UnRegister(s socket.Socket) {
+	logrus.Info("Server disconnect")
 }
 
 func (hub *Hub) handleMsg(msg socket.Message) {
@@ -55,7 +59,7 @@ func (hub *Hub) handleMsg(msg socket.Message) {
 		hub.game = msg.Game
 		hub.game.Render()
 
-		switch hub.game.GetStatus() {
+		switch hub.game.Status {
 		case game.Running:
 			if hub.player == hub.game.Player {
 				hub.inputLock = true
@@ -77,7 +81,7 @@ func (hub *Hub) handleMsg(msg socket.Message) {
 							Player: hub.player,
 						})
 
-						hub.Socket.SendMessage(msg)
+						hub.socket.SendMessage(msg)
 					}
 
 				}()
@@ -85,7 +89,7 @@ func (hub *Hub) handleMsg(msg socket.Message) {
 				fmt.Println("Enemy turn.")
 			}
 		case game.XWin, game.OWin:
-			if hub.player == hub.game.GetStatus().GetPlayer() {
+			if hub.player == hub.game.Status.GetPlayer() {
 				fmt.Println("You won !!!")
 			} else {
 				fmt.Println("Your opponent won, good luck next !!")
@@ -95,7 +99,7 @@ func (hub *Hub) handleMsg(msg socket.Message) {
 		}
 
 	default:
-		logrus.Infof("Invalid msg:", msg)
+		logrus.Warn("Invalid msg:", msg)
 	}
 }
 
@@ -105,6 +109,13 @@ func (hub *Hub) Run() {
 		select {
 		case msg := <-hub.message:
 			hub.handleMsg(msg)
+		case <-hub.done:
+			return
 		}
 	}
+}
+
+func (hub *Hub) Stop() {
+	hub.socket.CloseMessage()
+	close(hub.done)
 }
