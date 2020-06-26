@@ -75,6 +75,7 @@ func (core *coreServer) Run() error {
 			// hub <- core
 			log.Infof("core: detele hub (%s)", hub.key)
 
+			close(hub.doneC)
 			delete(core.hubs, hub.key)
 		case msg := <-core.findC:
 			// find hub from core

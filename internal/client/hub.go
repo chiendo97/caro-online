@@ -118,6 +118,7 @@ func (hub *Hub) Run() error {
 		case msg := <-hub.message:
 			hub.handleMsg(msg)
 		case err := <-errC:
+			logrus.Info("Hub shutdown")
 			return err
 		}
 	}

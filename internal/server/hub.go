@@ -146,7 +146,6 @@ func (hub *Hub) subscribe(s socket.Socket) {
 		}
 	}
 
-	logrus.Infof("hub %s: take new socket %s as player %d", hub.key, s.GetSocketIPAddress(), player)
 	hub.players[s] = player
 
 	hub.playerWG.Add(1)
@@ -160,11 +159,12 @@ func (hub *Hub) subscribe(s socket.Socket) {
 	}()
 
 	hub.broadcast()
+
+	logrus.Infof("hub %s: take new socket %s as player %d", hub.key, s.GetSocketIPAddress(), player)
 }
 
 func (hub *Hub) unsubscribe(s socket.Socket) {
 	if _, ok := hub.players[s]; ok {
-		logrus.Infof("hub %s: Player %s left", hub.key, s.GetSocketIPAddress())
 
 		delete(hub.players, s)
 
@@ -175,6 +175,8 @@ func (hub *Hub) unsubscribe(s socket.Socket) {
 		} else {
 			hub.core.UnRegister(hub)
 		}
+
+		logrus.Infof("hub %s: Player %s left", hub.key, s.GetSocketIPAddress())
 	}
 }
 

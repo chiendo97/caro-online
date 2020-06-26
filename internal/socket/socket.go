@@ -110,7 +110,8 @@ func (c *socket) read() error {
 			if !websocket.IsUnexpectedCloseError(err, websocket.CloseAbnormalClosure, websocket.CloseNormalClosure) {
 				return nil
 			}
-			log.Infof("socket: error read socket %v", err)
+			e, _ := err.(*websocket.CloseError)
+			log.Infof("socket: error read socket %v %v", err, e)
 			return err
 		}
 
