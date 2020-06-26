@@ -1,6 +1,7 @@
 package server
 
 import (
+	"sync"
 	"time"
 
 	"github.com/chiendo97/caro-online/internal/socket"
@@ -11,14 +12,27 @@ import (
 )
 
 type CoreServer interface {
-	Run()
-
-	Register(hub *Hub)
-	UnRegister(hub *Hub)
+	Run() error
+	Stop()
 
 	FindGame(msg msgStruct)
 	JoinGame(msg msgStruct)
 	CreateGame(msg msgStruct)
+}
+
+type coreServer struct {
+	hubs      map[string]*Hub
+	availHubC chan string
+	hubWg     sync.WaitGroup
+
+	findC   chan msgStruct
+	joinC   chan msgStruct
+	createC chan msgStruct
+
+	regC   chan *Hub
+	unregC chan *Hub
+
+	done chan int
 }
 
 func InitCoreServer() CoreServer {
@@ -40,126 +54,98 @@ func InitCoreServer() CoreServer {
 	return &core
 }
 
-type coreServer struct {
-	hubs      map[string]*Hub
-	availHubC chan string
-
-	findC   chan msgStruct
-	joinC   chan msgStruct
-	createC chan msgStruct
-
-	regC   chan *Hub
-	unregC chan *Hub
-
-	done chan int
-}
-
-func (core *coreServer) Register(hub *Hub) {
-	core.regC <- hub
-}
-func (core *coreServer) UnRegister(hub *Hub) {
-	core.unregC <- hub
-}
-func (core *coreServer) FindGame(msg msgStruct) {
-	core.findC <- msg
-}
-func (core *coreServer) JoinGame(msg msgStruct) {
-	core.joinC <- msg
-}
-func (core *coreServer) CreateGame(msg msgStruct) {
-	core.createC <- msg
-}
-
-func (core *coreServer) createHub(msg msgStruct) {
-	var gameId = uuid.New().String()[:8]
-
-	_, ok := core.hubs[gameId]
-	if ok {
-		log.Error("Key duplicate: ", gameId, msg.conn.RemoteAddr())
-	}
-
-	var hub = initHub(core, gameId)
-
-	core.hubs[gameId] = hub
-
-	core.subscribe(hub)
-
-	go func() {
-		hub.Register(socket.InitAndRunSocket(msg.conn, hub))
-	}()
-}
-
-func (core *coreServer) joinHub(msg msgStruct) {
-
-	hub, ok := core.hubs[msg.gameId]
-
-	if !ok {
-		log.Info("core: hub not found - ", msg.gameId, msg.conn.RemoteAddr())
-		msg.conn.WriteMessage(websocket.CloseMessage, []byte{})
-		return
-	}
-
-	go func() {
-		hub.Register(socket.InitAndRunSocket(msg.conn, hub))
-	}()
-}
-
-func (core *coreServer) findHub(msg msgStruct) {
-
-	go func() {
-		for {
-			select {
-			case gameID := <-core.availHubC:
-				if _, ok := core.hubs[gameID]; !ok {
-					continue
-				}
-				msg.gameId = gameID
-				core.joinC <- msg
-				return
-			case <-time.After(3 * time.Second):
-				core.createC <- msg
-				return
-			}
-		}
-	}()
-}
-
-func (core *coreServer) subscribe(hub *Hub) {
-	go func() {
-		core.availHubC <- hub.key
-	}()
-}
-
-func (core *coreServer) unsubscribe(hub *Hub) {
-
-	delete(core.hubs, hub.key)
-}
-
-func (core *coreServer) Run() {
+func (core *coreServer) Run() error {
 	for {
 		select {
 		case <-core.done:
-			return
+			// stop core
+			for _, hub := range core.hubs {
+				close(hub.doneC)
+			}
+			core.hubWg.Wait()
+			return nil
 		case hub := <-core.regC:
+			// hub -> core
 			log.Infof("core: hub (%s) subscribe.", hub.key)
 
-			core.subscribe(hub)
+			go func() {
+				core.availHubC <- hub.key
+			}()
 		case hub := <-core.unregC:
+			// hub <- core
 			log.Infof("core: detele hub (%s)", hub.key)
 
-			core.unsubscribe(hub)
+			delete(core.hubs, hub.key)
 		case msg := <-core.findC:
+			// find hub from core
 			log.Infof("core: socket (%s) find game", msg.conn.RemoteAddr())
 
-			core.findHub(msg)
+			go func() {
+				for {
+					select {
+					case gameID := <-core.availHubC:
+						if _, ok := core.hubs[gameID]; !ok {
+							continue
+						}
+						msg.gameId = gameID
+						core.joinC <- msg
+						return
+					case <-time.After(3 * time.Second):
+						core.createC <- msg
+						return
+					}
+				}
+			}()
 		case msg := <-core.joinC:
+			// join hub from core
 			log.Infof("core: socket (%s) join hub (%s)", msg.conn.RemoteAddr(), msg.gameId)
 
-			core.joinHub(msg)
+			hub, ok := core.hubs[msg.gameId]
+
+			if !ok {
+				log.Info("core: hub not found - ", msg.gameId, msg.conn.RemoteAddr())
+				msg.conn.WriteMessage(websocket.CloseMessage, []byte{})
+			} else {
+				go func() {
+					hub.Register(socket.InitSocket(msg.conn, hub))
+				}()
+			}
+
 		case msg := <-core.createC:
+			// core create a new hub
 			log.Infof("core: socket (%s) create hub", msg.conn.RemoteAddr())
 
-			core.createHub(msg)
+			var gameId = uuid.New().String()[:8]
+
+			_, ok := core.hubs[gameId]
+			if ok {
+				log.Error("Key duplicate: ", gameId, msg.conn.RemoteAddr())
+			}
+
+			var hub = initHub(core, gameId)
+
+			core.hubs[gameId] = hub
+
+			go func() {
+				core.availHubC <- hub.key
+			}()
+
+			core.hubWg.Add(1)
+			go func() {
+				err := hub.run()
+				if err != nil {
+					log.Errorf("hub run error: %v", err)
+				}
+				core.hubWg.Done()
+			}()
+
+			go func() {
+				hub.Register(socket.InitSocket(msg.conn, hub))
+			}()
 		}
 	}
+}
+
+func (core *coreServer) Stop() {
+	close(core.done)
 }

@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/chiendo97/caro-online/internal/game"
@@ -10,27 +11,16 @@ import (
 )
 
 type Hub struct {
-	core    *coreServer
-	key     string
-	game    game.Game
-	players map[socket.Socket]game.Player
+	core     *coreServer
+	key      string
+	game     game.Game
+	players  map[socket.Socket]game.Player
+	playerWG sync.WaitGroup
 
 	msgC   chan socket.Message
 	regC   chan socket.Socket
 	unregC chan socket.Socket
 	doneC  chan int
-}
-
-func (hub *Hub) HandleMsg(msg socket.Message) {
-	hub.msgC <- msg
-}
-
-func (hub *Hub) UnRegister(s socket.Socket) {
-	hub.unregC <- s
-}
-
-func (hub *Hub) Register(s socket.Socket) {
-	hub.regC <- s
 }
 
 func initHub(core *coreServer, key string) *Hub {
@@ -49,9 +39,51 @@ func initHub(core *coreServer, key string) *Hub {
 		doneC: make(chan int),
 	}
 
-	go hub.run()
-
 	return &hub
+}
+
+func (hub *Hub) HandleMsg(msg socket.Message) {
+	hub.msgC <- msg
+}
+
+/*
+	core close -> close all hub.
+	hub close -> close all socket (player)
+
+	// in case, client send close msg -> need UnRegister
+	socket close -> hub UnRegister
+	hub UnRegister -> close that socket (player)
+
+	// conclusion WRONG
+	only UnRegister when client send close msg.
+	not read closed network
+	read close -> UnRegister
+
+	// 2nd conclusion
+	UnRegister when ???
+
+	Client send close msg.
+	Server read close msg.
+	UnRegister
+
+	// 3rd conclusion:
+	UnRegister should not close socket.
+	When server read close msg, close socket itself
+
+	// 4th conclusion
+	FUCKING DEADLOCK
+	UnRegister call to for select
+	it stucks because of closing all socket
+	socket call to UnRegister
+
+*/
+
+func (hub *Hub) UnRegister(s socket.Socket) {
+	hub.unregC <- s
+}
+
+func (hub *Hub) Register(s socket.Socket) {
+	hub.regC <- s
 }
 
 func (hub *Hub) broadcast() {
@@ -117,6 +149,16 @@ func (hub *Hub) subscribe(s socket.Socket) {
 	logrus.Infof("hub %s: take new socket %s as player %d", hub.key, s.GetSocketIPAddress(), player)
 	hub.players[s] = player
 
+	hub.playerWG.Add(1)
+	go func() {
+		err1, err2 := s.Run()
+
+		if err1 != nil || err2 != nil {
+			logrus.Errorf("%v:%v", err1, err2)
+		}
+		hub.playerWG.Done()
+	}()
+
 	hub.broadcast()
 }
 
@@ -125,7 +167,6 @@ func (hub *Hub) unsubscribe(s socket.Socket) {
 		logrus.Infof("hub %s: Player %s left", hub.key, s.GetSocketIPAddress())
 
 		delete(hub.players, s)
-		s.CloseMessage()
 
 		hub.broadcast()
 
@@ -134,11 +175,10 @@ func (hub *Hub) unsubscribe(s socket.Socket) {
 		} else {
 			hub.core.UnRegister(hub)
 		}
-
 	}
 }
 
-func (hub *Hub) run() {
+func (hub *Hub) run() error {
 
 	for {
 		select {
@@ -152,7 +192,8 @@ func (hub *Hub) run() {
 			for socket := range hub.players {
 				socket.CloseMessage()
 			}
-			return
+			hub.playerWG.Wait()
+			return nil
 		}
 	}
 }

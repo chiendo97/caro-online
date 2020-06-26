@@ -21,8 +21,6 @@ type Hub struct {
 
 	inputLock    bool
 	inputChannel chan chan interface{}
-
-	done chan int
 }
 
 // InitHub init new client hub
@@ -30,10 +28,9 @@ func InitHub(c *websocket.Conn) *Hub {
 	var hub = Hub{
 		message:      make(chan socket.Message),
 		inputChannel: InpupChannel(),
-		done:         make(chan int),
 	}
 
-	hub.socket = socket.InitAndRunSocket(c, &hub)
+	hub.socket = socket.InitSocket(c, &hub)
 
 	return &hub
 }
@@ -103,19 +100,29 @@ func (hub *Hub) handleMsg(msg socket.Message) {
 	}
 }
 
-func (hub *Hub) Run() {
+func (hub *Hub) Run() error {
+
+	errC := make(chan error)
+
+	go func() {
+		err1, err2 := hub.socket.Run()
+		if err1 != nil || err2 != nil {
+			errC <- fmt.Errorf("%v:%v", err1, err2)
+		} else {
+			errC <- nil
+		}
+	}()
 
 	for {
 		select {
 		case msg := <-hub.message:
 			hub.handleMsg(msg)
-		case <-hub.done:
-			return
+		case err := <-errC:
+			return err
 		}
 	}
 }
 
 func (hub *Hub) Stop() {
 	hub.socket.CloseMessage()
-	close(hub.done)
 }

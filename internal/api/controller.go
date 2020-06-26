@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -11,13 +12,15 @@ import (
 
 type service struct {
 	upgrader websocket.Upgrader
+	server   *http.Server
 	core     server.CoreServer
 }
 
-func InitService(core server.CoreServer) *service {
+func InitService(core server.CoreServer, port int) *service {
 	s := &service{
 		upgrader: websocket.Upgrader{},
 		core:     core,
+		server:   &http.Server{Addr: fmt.Sprintf(":%d", port)},
 	}
 	s.buildAPI()
 	return s
@@ -52,5 +55,15 @@ func (s *service) buildAPI() {
 
 func (s *service) ListenAndServe(port int) error {
 	log.Info("Server is running on port ", port)
-	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+
+	err := s.server.ListenAndServe()
+	if err != nil && err != http.ErrServerClosed {
+		return err
+	}
+	return nil
+}
+
+func (s *service) Shutdown() error {
+	log.Info("Server shutdown")
+	return s.server.Shutdown(context.Background())
 }

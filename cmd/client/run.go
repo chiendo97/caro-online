@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
@@ -42,7 +41,11 @@ func run(ctx *cli.Context) error {
 
 	hub := client.InitHub(c)
 
-	go hub.Run()
+	errC := make(chan error)
+
+	go func() {
+		errC <- hub.Run()
+	}()
 
 	// === take interrupt
 	interrupt := make(chan os.Signal, 1)
@@ -51,9 +54,9 @@ func run(ctx *cli.Context) error {
 		select {
 		case <-interrupt:
 			hub.Stop()
-			<-time.After(1 * time.Second)
+		case err := <-errC:
 			logrus.Info("Exit client")
-			return nil
+			return err
 		}
 	}
 }
