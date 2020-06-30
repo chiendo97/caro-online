@@ -39,7 +39,7 @@ func run(ctx *cli.Context) error {
 		return fmt.Errorf("Dial error: %v", err)
 	}
 
-	hub := client.InitHub(c)
+	hub := client.InitHub(c, nil)
 
 	errC := make(chan error)
 

@@ -64,6 +64,5 @@ func (s *service) ListenAndServe(port int) error {
 }
 
 func (s *service) Shutdown() error {
-	log.Info("Server shutdown")
 	return s.server.Shutdown(context.Background())
 }

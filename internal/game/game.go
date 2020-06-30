@@ -42,6 +42,22 @@ func InitGame(gameId string) Game {
 	return game
 }
 
+func (g Game) IsValidMove(move Move) error {
+	x := move.X
+	y := move.Y
+
+	if x < 0 || x >= g.Board.Width {
+		return fmt.Errorf("Invalid X")
+	}
+	if y < 0 || y >= g.Board.Height {
+		return fmt.Errorf("Invalid Y")
+	}
+	if g.Board.Cells[x][y].isFill() {
+		return fmt.Errorf("Cell is already filled")
+	}
+	return nil
+}
+
 func (g Game) TakeMove(move Move) (Game, error) {
 
 	var board = g.Board
@@ -51,14 +67,8 @@ func (g Game) TakeMove(move Move) (Game, error) {
 	p := move.Player
 
 	// check valid x, y, t
-	if x < 0 || x >= g.Board.Width {
-		return g, fmt.Errorf("Invalid X")
-	}
-	if y < 0 || y >= g.Board.Height {
-		return g, fmt.Errorf("Invalid Y")
-	}
-	if board.Cells[x][y].isFill() {
-		return g, fmt.Errorf("Cell is already filled")
+	if err := g.IsValidMove(move); err != nil {
+		return g, err
 	}
 
 	board.Cells[x][y] = Cell{Player: p}

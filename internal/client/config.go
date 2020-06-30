@@ -1,4 +1,4 @@
 package client
 
-type hubConfig struct {
+type Config struct {
 }

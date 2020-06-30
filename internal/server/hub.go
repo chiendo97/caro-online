@@ -125,7 +125,6 @@ func (hub *Hub) handleMsg(msg socket.Message) {
 	if hub.game.Status != game.Running {
 		time.Sleep(5 * time.Second)
 		hub.core.UnRegister(hub)
-		close(hub.doneC)
 	}
 }
 
