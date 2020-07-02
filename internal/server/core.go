@@ -114,7 +114,6 @@ func (core *coreServer) Run() error {
 
 		case msg := <-core.createC:
 			// core create a new hub
-			log.Infof("core: socket (%s) create hub", msg.conn.RemoteAddr())
 
 			var gameId = uuid.New().String()[:8]
 
@@ -143,6 +142,8 @@ func (core *coreServer) Run() error {
 			go func() {
 				hub.Register(socket.InitSocket(msg.conn, hub))
 			}()
+
+			log.Infof("core: socket (%s) create hub (%s)", msg.conn.RemoteAddr(), gameId)
 		}
 	}
 }

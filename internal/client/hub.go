@@ -82,7 +82,7 @@ func (hub *Hub) handleMsg(msg socket.Message) {
 		case game.Running:
 			if hub.player == hub.game.Player {
 				hub.inputLock = true
-				//fmt.Printf("Your turn: ")
+				log.Info("Your turn: \n")
 				go func() {
 					var x, y int
 					move, _ := hub.bot.GetMove(hub.player, hub.game)
@@ -108,16 +108,16 @@ func (hub *Hub) handleMsg(msg socket.Message) {
 
 				}()
 			} else {
-				//fmt.Println("Enemy turn.")
+				log.Info("Enemy turn.")
 			}
 		case game.XWin, game.OWin:
 			if hub.player == hub.game.Status.GetPlayer() {
-				//fmt.Println("You won !!!")
+				log.Info("You won !!!")
 			} else {
-				//fmt.Println("Your opponent won, good luck next !!")
+				log.Info("Your opponent won, good luck next !!")
 			}
 		case game.Tie:
-			//fmt.Println("Game tie!!")
+			log.Info("Game tie!!")
 		}
 
 	default:

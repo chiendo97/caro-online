@@ -10,19 +10,21 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+var log = logrus.New()
+
 func init() {
-	logrus.SetFormatter(&logrus.TextFormatter{
+	log.SetFormatter(&logrus.TextFormatter{
 		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
 			filename := path.Base(f.File)
 			return "", fmt.Sprintf(" %s:%d\t", filename, f.Line)
 		},
 	})
 
-	logrus.SetOutput(os.Stdout)
+	log.SetOutput(os.Stdout)
 
-	logrus.SetLevel(logrus.ErrorLevel)
+	log.SetLevel(logrus.ErrorLevel)
 
-	logrus.SetReportCaller(true)
+	log.SetReportCaller(true)
 }
 
 func main() {
