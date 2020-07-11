@@ -56,7 +56,6 @@ func (hub *Hub) OnMessage(msg socket.Message) {
 	hub.broadcast()
 
 	if hub.game.Status != game.Running {
-		logrus.Debugf("Game stop")
 		go hub.core.UnRegister(hub)
 	}
 }
@@ -64,8 +63,6 @@ func (hub *Hub) OnMessage(msg socket.Message) {
 func (hub *Hub) UnRegister(s socket.Socket) {
 	hub.mux.Lock()
 	defer hub.mux.Unlock()
-
-	logrus.Debugf("Stop socket %v", s.GetSocketIPAddress())
 
 	if _, ok := hub.players[s]; ok {
 		delete(hub.players, s)
@@ -126,14 +123,14 @@ func (hub *Hub) broadcast() {
 		var msg = socket.GenerateAnnouncementMsg(fmt.Sprintf("hub %s: wait for players", hub.key))
 		for socket := range hub.players {
 			socket.SendMessage(msg)
-			logrus.Debugf("hub: send (%s) to (%s)", msg, socket.GetSocketIPAddress())
+			// logrus.Debugf("hub %s: send (%s) to (%s)", hub.key, msg, socket.GetSocketIPAddress())
 		}
 	} else {
 		for s, player := range hub.players {
 			var game = hub.game
 			var msg = socket.GenerateGameMsg(player, game)
 			s.SendMessage(msg)
-			logrus.Debugf("hub: send (%s) to (%s)", msg, s.GetSocketIPAddress())
+			// logrus.Debugf("hub %s: send (%s) to (%s)", hub.key, msg, s.GetSocketIPAddress())
 		}
 	}
 

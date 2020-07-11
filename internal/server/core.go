@@ -26,6 +26,8 @@ type coreServer struct {
 	hubs     map[string]*Hub
 	availHub chan string
 
+	players map[*websocket.Conn]bool
+
 	done chan int
 }
 
@@ -35,6 +37,8 @@ func InitCoreServer() CoreServer {
 
 		hubs:     make(map[string]*Hub),
 		availHub: make(chan string, 5),
+
+		players: make(map[*websocket.Conn]bool),
 
 		done: make(chan int),
 	}
@@ -81,28 +85,98 @@ func (core *coreServer) UnRegister(hub *Hub) {
 	}
 }
 
+func (core *coreServer) findPlayer(conn *websocket.Conn) bool {
+
+	core.mux.Lock()
+	defer core.mux.Unlock()
+
+	if _, ok := core.players[conn]; !ok {
+		return true
+	}
+
+	err := conn.WriteMessage(websocket.PingMessage, []byte{})
+	if err != nil {
+		return true
+	}
+
+	// log.Warnf("%v=%v", conn.RemoteAddr(), len(core.players))
+	for player := range core.players {
+		if conn == player {
+			continue
+		}
+
+		log.Warnf("DEBUG: %v=%v", conn.RemoteAddr(), player.RemoteAddr())
+
+		delete(core.players, player)
+		delete(core.players, conn)
+
+		var gameId = uuid.New().String()[:8]
+		var hub = initHub(core, gameId)
+
+		core.hubs[gameId] = hub
+
+		core.hubWG.Add(1)
+		go func() {
+			err := hub.Run()
+			if err != nil {
+				log.Errorf("hub run error: %v", err)
+			}
+			core.hubWG.Done()
+		}()
+
+		go func() {
+			hub.OnEnter(socket.InitSocket(conn, hub))
+			hub.OnEnter(socket.InitSocket(player, hub))
+		}()
+
+		log.Infof("core: socket (%s) create hub (%s)", conn.RemoteAddr(), gameId)
+		return true
+	}
+
+	return false
+}
+
+func (core *coreServer) findHub(conn *websocket.Conn, gameID string) bool {
+
+	core.mux.Lock()
+	defer core.mux.Unlock()
+
+	if _, ok := core.hubs[gameID]; !ok {
+		return false
+	}
+
+	go core.JoinGame(conn, gameID)
+	return true
+}
+
 func (core *coreServer) FindGame(conn *websocket.Conn) {
 
 	log.Infof("core: socket (%s) find game", conn.RemoteAddr())
 
+	core.mux.Lock()
+	defer core.mux.Unlock()
+
+	core.players[conn] = true
+
 	go func() {
+
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+
 		for {
 			select {
-			case gameID := <-core.availHub:
-				core.mux.Lock()
-				if _, ok := core.hubs[gameID]; !ok {
-					core.mux.Unlock()
-					continue
+			case <-ticker.C:
+				if ok := core.findPlayer(conn); ok {
+					return
 				}
-				core.mux.Unlock()
-				go core.JoinGame(conn, gameID)
-				return
-			case <-time.After(1 * time.Second):
-				go core.CreateGame(conn)
-				return
+			case gameID := <-core.availHub:
+				if ok := core.findHub(conn, gameID); ok {
+					return
+				}
 			}
 		}
 	}()
+
 }
 
 func (core *coreServer) JoinGame(conn *websocket.Conn, gameId string) {
@@ -143,7 +217,7 @@ func (core *coreServer) CreateGame(conn *websocket.Conn) {
 	core.hubs[gameId] = hub
 
 	go func() {
-		core.availHub <- hub.key
+		core.Register(hub)
 	}()
 
 	core.hubWG.Add(1)
