@@ -10,8 +10,8 @@ import (
 type Socket interface {
 	GetSocketIPAddress() string
 	SendMessage(msg Message)
-	CloseMessage()
 	Run() (error, error)
+	CloseMessage()
 }
 
 type socket struct {
@@ -20,12 +20,12 @@ type socket struct {
 	conn *websocket.Conn
 
 	msgC chan Message
-
-	done chan struct{}
 }
 
 func (s *socket) SendMessage(msg Message) {
+	log.Warnf("Sending socket(%v) msg(%v)", s.GetSocketIPAddress(), msg)
 	s.msgC <- msg
+	log.Warnf("Sending done socket(%v) msg(%v)", s.GetSocketIPAddress(), msg)
 }
 
 func (s *socket) CloseMessage() {
@@ -37,13 +37,15 @@ func InitSocket(conn *websocket.Conn, hub Hub) *socket {
 		conn: conn,
 		hub:  hub,
 		msgC: make(chan Message),
-		done: make(chan struct{}),
 	}
 
 	return &s
 }
 
 func (c *socket) Run() (error, error) {
+
+	log.Debugf("Socket %v start", c.GetSocketIPAddress())
+	defer log.Debugf("Socket %v stop", c.GetSocketIPAddress())
 
 	defer func() {
 		c.conn.Close()
@@ -66,31 +68,27 @@ func (c *socket) Run() (error, error) {
 	return <-errC, <-errC
 }
 
-// GetSocketIPAddress returns ip address of socket
-func (c *socket) GetSocketIPAddress() string {
-	return c.conn.RemoteAddr().String()
-}
-
 func (c *socket) write() error {
+
+	log.Debugf("Socket write %v start", c.GetSocketIPAddress())
+	defer log.Debugf("Socket write %v stop", c.GetSocketIPAddress())
 
 	for {
 		select {
-		case <-c.done:
-			return nil
 		case msg, ok := <-c.msgC:
 
 			if !ok {
-				err := c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-				if err != nil {
-					return err
-				}
+				c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 				return nil
 			}
 
 			err := c.conn.WriteJSON(msg)
 			if err != nil {
-				log.Infof("socket: error write socket %v", err)
-				return err
+				e, _ := err.(*websocket.CloseError)
+				if e != nil {
+					log.Warnf("Write message err code: %v", e.Code)
+				}
+				log.Warnf("Write message err: %v", err)
 			}
 		}
 	}
@@ -98,9 +96,11 @@ func (c *socket) write() error {
 
 func (c *socket) read() error {
 	defer func() {
-		close(c.done)
 		go c.hub.UnRegister(c)
 	}()
+
+	log.Debugf("Socket read %v start", c.GetSocketIPAddress())
+	defer log.Debugf("Socket read %v stop", c.GetSocketIPAddress())
 
 	for {
 		var msg Message
@@ -117,4 +117,9 @@ func (c *socket) read() error {
 
 		go c.hub.HandleMsg(msg)
 	}
+}
+
+// GetSocketIPAddress returns ip address of socket
+func (c *socket) GetSocketIPAddress() string {
+	return c.conn.RemoteAddr().String()
 }

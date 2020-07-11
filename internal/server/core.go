@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -21,7 +22,9 @@ type CoreServer interface {
 }
 
 type coreServer struct {
-	hubs      map[string]*Hub
+	hubs  map[string]*Hub
+	hubs2 map[string]*Hub
+
 	availHubC chan string
 	hubWg     sync.WaitGroup
 
@@ -39,6 +42,7 @@ func InitCoreServer() CoreServer {
 
 	var core = coreServer{
 		hubs:      make(map[string]*Hub),
+		hubs2:     make(map[string]*Hub),
 		availHubC: make(chan string, 5),
 
 		findC:   make(chan msgStruct),
@@ -54,15 +58,38 @@ func InitCoreServer() CoreServer {
 	return &core
 }
 
+func (core *coreServer) Test(hub *Hub) {
+
+	if _, ok := core.hubs[hub.key]; ok {
+		log.Infof("core: delete hub (%s)", hub.key)
+		close(hub.doneC)
+		delete(core.hubs, hub.key)
+	}
+}
+
 func (core *coreServer) Run() error {
+
+	log.Infof("Core start")
+	defer log.Infof("Core stop")
+
 	for {
 		select {
 		case <-core.done:
 			// stop core
 			for _, hub := range core.hubs {
-				close(hub.doneC)
+				core.Test(hub)
 			}
+			ctx, cancel := context.WithCancel(context.Background())
+			go func() {
+				select {
+				case <-time.After(time.Second):
+					log.Debugf("Hubs: %v", core.hubs2)
+				case <-ctx.Done():
+					return
+				}
+			}()
 			core.hubWg.Wait()
+			cancel()
 			return nil
 		case hub := <-core.regC:
 			// hub -> core
@@ -73,10 +100,7 @@ func (core *coreServer) Run() error {
 			}()
 		case hub := <-core.unregC:
 			// hub <- core
-			log.Infof("core: detele hub (%s)", hub.key)
-
-			close(hub.doneC)
-			delete(core.hubs, hub.key)
+			core.Test(hub)
 		case msg := <-core.findC:
 			// find hub from core
 			log.Infof("core: socket (%s) find game", msg.conn.RemoteAddr())
@@ -91,7 +115,7 @@ func (core *coreServer) Run() error {
 						msg.gameId = gameID
 						core.joinC <- msg
 						return
-					case <-time.After(3 * time.Second):
+					case <-time.After(1 * time.Second):
 						core.createC <- msg
 						return
 					}
@@ -125,6 +149,7 @@ func (core *coreServer) Run() error {
 			var hub = initHub(core, gameId)
 
 			core.hubs[gameId] = hub
+			core.hubs2[gameId] = hub
 
 			go func() {
 				core.availHubC <- hub.key
@@ -137,6 +162,7 @@ func (core *coreServer) Run() error {
 					log.Errorf("hub run error: %v", err)
 				}
 				core.hubWg.Done()
+				delete(core.hubs2, hub.key)
 			}()
 
 			go func() {

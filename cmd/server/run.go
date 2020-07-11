@@ -33,8 +33,6 @@ func run(c *cli.Context) error {
 		err := core.Run()
 		if err != nil {
 			logrus.Errorf("Core run error: %v", err)
-		} else {
-			logrus.Info("Core shutdown")
 		}
 		wg.Done()
 	}()

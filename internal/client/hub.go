@@ -2,9 +2,7 @@ package client
 
 import (
 	"fmt"
-	"os"
-	"path"
-	"runtime"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
@@ -13,22 +11,22 @@ import (
 	"github.com/chiendo97/caro-online/internal/socket"
 )
 
-var log = logrus.New()
+// var log = logrus.New()
 
-func init() {
-	log.SetFormatter(&logrus.TextFormatter{
-		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
-			filename := path.Base(f.File)
-			return "", fmt.Sprintf(" %s:%d\t", filename, f.Line)
-		},
-	})
+// func init() {
+//     log.SetFormatter(&logrus.TextFormatter{
+//         CallerPrettyfier: func(f *runtime.Frame) (string, string) {
+//             filename := path.Base(f.File)
+//             return "", fmt.Sprintf(" %s:%d\t", filename, f.Line)
+//         },
+//     })
 
-	log.SetOutput(os.Stdout)
+//     log.SetOutput(os.Stdout)
 
-	log.SetLevel(logrus.ErrorLevel)
+//     log.SetLevel(logrus.ErrorLevel)
 
-	log.SetReportCaller(true)
-}
+//     log.SetReportCaller(true)
+// }
 
 type Hub struct {
 	message chan socket.Message
@@ -61,7 +59,8 @@ func (hub *Hub) HandleMsg(msg socket.Message) {
 }
 
 func (hub *Hub) UnRegister(s socket.Socket) {
-	log.Info("Server disconnect")
+	s.CloseMessage()
+	logrus.Info("Server disconnect")
 }
 
 func (hub *Hub) handleMsg(msg socket.Message) {
@@ -70,7 +69,7 @@ func (hub *Hub) handleMsg(msg socket.Message) {
 
 	switch msg.Type {
 	case socket.AnnouncementMessageType:
-		log.Infof("Server: %s\n", msg.Announcement)
+		logrus.Infof("Server: %s\n", msg.Announcement)
 
 	case socket.GameMessageType:
 		hub.player = msg.Player
@@ -82,10 +81,11 @@ func (hub *Hub) handleMsg(msg socket.Message) {
 		case game.Running:
 			if hub.player == hub.game.Player {
 				hub.inputLock = true
-				log.Info("Your turn: \n")
+				logrus.Info("Your turn: \n")
 				go func() {
 					var x, y int
 					move, _ := hub.bot.GetMove(hub.player, hub.game)
+					time.Sleep(time.Hour)
 					x = move.X
 					y = move.Y
 					// input := make(chan interface{})
@@ -108,20 +108,20 @@ func (hub *Hub) handleMsg(msg socket.Message) {
 
 				}()
 			} else {
-				log.Info("Enemy turn.")
+				logrus.Info("Enemy turn.")
 			}
 		case game.XWin, game.OWin:
 			if hub.player == hub.game.Status.GetPlayer() {
-				log.Info("You won !!!")
+				logrus.Info("You won !!!")
 			} else {
-				log.Info("Your opponent won, good luck next !!")
+				logrus.Info("Your opponent won, good luck next !!")
 			}
 		case game.Tie:
-			log.Info("Game tie!!")
+			logrus.Info("Game tie!!")
 		}
 
 	default:
-		log.Warn("Invalid msg:", msg)
+		logrus.Warn("Invalid msg:", msg)
 	}
 }
 
@@ -143,7 +143,7 @@ func (hub *Hub) Run() error {
 		case msg := <-hub.message:
 			hub.handleMsg(msg)
 		case err := <-errC:
-			log.Info("Hub shutdown")
+			logrus.Info("Hub shutdown")
 			return err
 		}
 	}

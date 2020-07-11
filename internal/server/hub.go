@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -11,6 +12,7 @@ import (
 )
 
 type Hub struct {
+	debug    map[string]int
 	core     *coreServer
 	key      string
 	game     game.Game
@@ -26,9 +28,10 @@ type Hub struct {
 func initHub(core *coreServer, key string) *Hub {
 
 	var hub = Hub{
-		core: core,
-		key:  key,
-		msgC: make(chan socket.Message),
+		debug: make(map[string]int),
+		core:  core,
+		key:   key,
+		msgC:  make(chan socket.Message),
 
 		game:    game.InitGame(key),
 		players: make(map[socket.Socket]game.Player),
@@ -46,38 +49,6 @@ func (hub *Hub) HandleMsg(msg socket.Message) {
 	hub.msgC <- msg
 }
 
-/*
-	core close -> close all hub.
-	hub close -> close all socket (player)
-
-	// in case, client send close msg -> need UnRegister
-	socket close -> hub UnRegister
-	hub UnRegister -> close that socket (player)
-
-	// conclusion WRONG
-	only UnRegister when client send close msg.
-	not read closed network
-	read close -> UnRegister
-
-	// 2nd conclusion
-	UnRegister when ???
-
-	Client send close msg.
-	Server read close msg.
-	UnRegister
-
-	// 3rd conclusion:
-	UnRegister should not close socket.
-	When server read close msg, close socket itself
-
-	// 4th conclusion
-	FUCKING DEADLOCK
-	UnRegister call to for select
-	it stucks because of closing all socket
-	socket call to UnRegister
-
-*/
-
 func (hub *Hub) UnRegister(s socket.Socket) {
 	hub.unregC <- s
 }
@@ -92,14 +63,14 @@ func (hub *Hub) broadcast() {
 		var msg = socket.GenerateAnnouncementMsg(fmt.Sprintf("hub %s: wait for players", hub.key))
 		for socket := range hub.players {
 			socket.SendMessage(msg)
-			logrus.Infof("hub: send (%s) to (%s)", msg, socket.GetSocketIPAddress())
+			logrus.Debugf("hub: send (%s) to (%s)", msg, socket.GetSocketIPAddress())
 		}
 	} else {
 		for s, player := range hub.players {
 			var game = hub.game
 			var msg = socket.GenerateGameMsg(player, game)
 			s.SendMessage(msg)
-			logrus.Infof("hub: send (%s) to (%s)", msg, s.GetSocketIPAddress())
+			logrus.Debugf("hub: send (%s) to (%s)", msg, s.GetSocketIPAddress())
 		}
 	}
 
@@ -115,7 +86,7 @@ func (hub *Hub) handleMsg(msg socket.Message) {
 	g, err := hub.game.TakeMove(msg.Move)
 
 	if err != nil {
-		logrus.Infof("hub %s: game error - %s", hub.key, err)
+		logrus.Debugf("hub %s: game error - %s", hub.key, err)
 	} else {
 		hub.game = g
 	}
@@ -123,14 +94,13 @@ func (hub *Hub) handleMsg(msg socket.Message) {
 	hub.broadcast()
 
 	if hub.game.Status != game.Running {
-		time.Sleep(5 * time.Second)
-		hub.core.UnRegister(hub)
+		go hub.core.UnRegister(hub)
 	}
 }
 
 func (hub *Hub) subscribe(s socket.Socket) {
 	if len(hub.players) == 2 {
-		logrus.Infof("hub %s: room is full %s", hub.key, s.GetSocketIPAddress())
+		logrus.Debugf("hub %s: room is full %s", hub.key, s.GetSocketIPAddress())
 		s.CloseMessage()
 		return
 	}
@@ -149,20 +119,24 @@ func (hub *Hub) subscribe(s socket.Socket) {
 
 	hub.playerWG.Add(1)
 	go func() {
+		hub.debug[s.GetSocketIPAddress()] = 1
 		err1, err2 := s.Run()
 
 		if err1 != nil || err2 != nil {
-			logrus.Errorf("%v:%v", err1, err2)
+			logrus.Errorf("Socket run err: %v:%v", err1, err2)
 		}
 		hub.playerWG.Done()
+		delete(hub.debug, s.GetSocketIPAddress())
 	}()
 
 	hub.broadcast()
 
-	logrus.Infof("hub %s: take new socket %s as player %d", hub.key, s.GetSocketIPAddress(), player)
+	logrus.Debugf("hub %s: take new socket %s as player %d", hub.key, s.GetSocketIPAddress(), player)
 }
 
 func (hub *Hub) unsubscribe(s socket.Socket) {
+	s.CloseMessage()
+
 	if _, ok := hub.players[s]; ok {
 
 		delete(hub.players, s)
@@ -170,31 +144,54 @@ func (hub *Hub) unsubscribe(s socket.Socket) {
 		hub.broadcast()
 
 		if len(hub.players) == 1 {
-			hub.core.Register(hub)
+			go hub.core.Register(hub)
 		} else {
-			hub.core.UnRegister(hub)
+			go hub.core.UnRegister(hub)
 		}
-
-		logrus.Infof("hub %s: Player %s left", hub.key, s.GetSocketIPAddress())
 	}
+
 }
 
 func (hub *Hub) run() error {
 
+	logrus.Debugf("Hub %v start", hub.key)
+	defer logrus.Debugf("Hub %v stop", hub.key)
+
+	var debug = ""
+	var ctx, cancel = context.WithCancel(context.Background())
+
+	go func() {
+		for {
+			select {
+			case <-time.After(time.Second):
+				logrus.Debugf("hub:(%v) debug:(%v) Sockets:(%v)", hub.key, debug, hub.debug)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
 	for {
 		select {
 		case msg := <-hub.msgC:
+			debug = fmt.Sprintf("1 %v", msg)
 			hub.handleMsg(msg)
 		case socket := <-hub.regC:
+			debug = fmt.Sprintf("2 %v", socket.GetSocketIPAddress())
 			hub.subscribe(socket)
 		case socket := <-hub.unregC:
+			debug = fmt.Sprintf("3 %v", socket.GetSocketIPAddress())
 			hub.unsubscribe(socket)
 		case <-hub.doneC:
+			debug = fmt.Sprintf("4 ")
 			for socket := range hub.players {
-				socket.CloseMessage()
+				logrus.Debugf("Hub %v calling stop %s", hub.key, socket.GetSocketIPAddress())
+				hub.unsubscribe(socket)
 			}
 			hub.playerWG.Wait()
+			cancel()
 			return nil
 		}
+		debug = ""
 	}
 }

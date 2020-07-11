@@ -3,9 +3,11 @@ package main
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/chiendo97/caro-online/internal/client"
 	"github.com/gorilla/websocket"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -16,21 +18,21 @@ func run(ctx *cli.Context) error {
 
 	var wg sync.WaitGroup
 
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 200; i++ {
 		wg.Add(1)
-		// time.Sleep(time.Second / 2)
+		time.Sleep(time.Second / 200)
 		go func() {
 			defer wg.Done()
 			c, _, err := websocket.DefaultDialer.Dial(host, nil)
 			if err != nil {
-				log.Errorf("Dial error: %v", err)
+				logrus.Errorf("Dial error: %v", err)
 				return
 			}
 
 			hub := client.InitHub(c, &client.RandomBot{})
 
 			if err := hub.Run(); err != nil {
-				log.Errorf("Run: %v", err)
+				logrus.Errorf("Hub run err: %v", err)
 				return
 			}
 		}()
