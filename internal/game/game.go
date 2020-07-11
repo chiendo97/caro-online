@@ -27,10 +27,6 @@ type Move struct {
 	Player Player
 }
 
-func (g Game) String() string {
-	return fmt.Sprintf("Status (%d) Player (%d)", g.Status, g.Player)
-}
-
 func InitGame(gameId string) Game {
 	var game = Game{
 		GameID: gameId,
@@ -40,6 +36,23 @@ func InitGame(gameId string) Game {
 	}
 
 	return game
+}
+
+func (g Game) String() string {
+	return fmt.Sprintf("Status (%d) Player (%d)", g.Status, g.Player)
+}
+
+func (g Game) Copy() Game {
+	var newGame = Game{
+		GameID: g.GameID,
+		Status: g.Status,
+		Player: g.Player,
+		Board:  initBoard(g.Board.Width, g.Board.Height),
+	}
+	for i, _ := range newGame.Board.Cells {
+		copy(newGame.Board.Cells[i], g.Board.Cells[i])
+	}
+	return newGame
 }
 
 func (g Game) IsValidMove(move Move) error {

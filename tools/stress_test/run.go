@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/chiendo97/caro-online/internal/client"
 	"github.com/gorilla/websocket"
@@ -20,7 +19,7 @@ func run(ctx *cli.Context) error {
 
 	for i := 0; i < 200; i++ {
 		wg.Add(1)
-		time.Sleep(time.Second / 200)
+		// time.Sleep(time.Second / 100)
 		go func() {
 			defer wg.Done()
 			c, _, err := websocket.DefaultDialer.Dial(host, nil)

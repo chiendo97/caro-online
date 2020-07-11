@@ -33,23 +33,18 @@ func (s *service) buildAPI() {
 	http.HandleFunc("/create_hub", func(w http.ResponseWriter, r *http.Request) {
 		conn, _ := s.upgrader.Upgrade(w, r, nil)
 
-		var key = ""
-		var msg = server.InitMessage(conn, key)
-		s.core.CreateGame(msg)
+		s.core.CreateGame(conn)
 	})
 	http.HandleFunc("/join_hub", func(w http.ResponseWriter, r *http.Request) {
 		conn, _ := s.upgrader.Upgrade(w, r, nil)
 
-		var key = r.URL.Query().Get("hub")
-		var msg = server.InitMessage(conn, key)
-		s.core.JoinGame(msg)
+		var gameID = r.URL.Query().Get("hub")
+		s.core.JoinGame(conn, gameID)
 	})
 	http.HandleFunc("/find_hub", func(w http.ResponseWriter, r *http.Request) {
 		conn, _ := s.upgrader.Upgrade(w, r, nil)
 
-		var key = ""
-		var msg = server.InitMessage(conn, key)
-		s.core.FindGame(msg)
+		s.core.FindGame(conn)
 	})
 }
 

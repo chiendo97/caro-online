@@ -45,21 +45,24 @@ func (msg Message) String() string {
 func GenerateMoveMsg(move game.Move) Message {
 	return Message{
 		Type: MoveMessageType,
+
 		Move: move,
 	}
 }
 
 func GenerateGameMsg(p game.Player, g game.Game) Message {
 	return Message{
-		Type:   GameMessageType,
+		Type: GameMessageType,
+
 		Player: p,
-		Game:   g,
+		Game:   g.Copy(),
 	}
 }
 
 func GenerateAnnouncementMsg(message string) Message {
 	return Message{
-		Type:         AnnouncementMessageType,
+		Type: AnnouncementMessageType,
+
 		Announcement: message,
 	}
 }

@@ -8,9 +8,13 @@ import (
 )
 
 type Socket interface {
+	// GetSocketIPAddress returns ip address of socket
 	GetSocketIPAddress() string
+
 	SendMessage(msg Message)
+
 	Run() (error, error)
+
 	CloseMessage()
 }
 
@@ -23,12 +27,15 @@ type socket struct {
 }
 
 func (s *socket) SendMessage(msg Message) {
-	log.Warnf("Sending socket(%v) msg(%v)", s.GetSocketIPAddress(), msg)
 	s.msgC <- msg
-	log.Warnf("Sending done socket(%v) msg(%v)", s.GetSocketIPAddress(), msg)
 }
 
 func (s *socket) CloseMessage() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in f", r, s.GetSocketIPAddress())
+		}
+	}()
 	close(s.msgC)
 }
 
@@ -70,9 +77,6 @@ func (c *socket) Run() (error, error) {
 
 func (c *socket) write() error {
 
-	log.Debugf("Socket write %v start", c.GetSocketIPAddress())
-	defer log.Debugf("Socket write %v stop", c.GetSocketIPAddress())
-
 	for {
 		select {
 		case msg, ok := <-c.msgC:
@@ -99,9 +103,6 @@ func (c *socket) read() error {
 		go c.hub.UnRegister(c)
 	}()
 
-	log.Debugf("Socket read %v start", c.GetSocketIPAddress())
-	defer log.Debugf("Socket read %v stop", c.GetSocketIPAddress())
-
 	for {
 		var msg Message
 		err := c.conn.ReadJSON(&msg)
@@ -115,11 +116,10 @@ func (c *socket) read() error {
 			return err
 		}
 
-		go c.hub.HandleMsg(msg)
+		go c.hub.OnMessage(msg)
 	}
 }
 
-// GetSocketIPAddress returns ip address of socket
 func (c *socket) GetSocketIPAddress() string {
 	return c.conn.RemoteAddr().String()
 }

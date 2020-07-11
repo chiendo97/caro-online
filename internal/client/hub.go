@@ -2,7 +2,6 @@ package client
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
@@ -10,23 +9,6 @@ import (
 	"github.com/chiendo97/caro-online/internal/game"
 	"github.com/chiendo97/caro-online/internal/socket"
 )
-
-// var log = logrus.New()
-
-// func init() {
-//     log.SetFormatter(&logrus.TextFormatter{
-//         CallerPrettyfier: func(f *runtime.Frame) (string, string) {
-//             filename := path.Base(f.File)
-//             return "", fmt.Sprintf(" %s:%d\t", filename, f.Line)
-//         },
-//     })
-
-//     log.SetOutput(os.Stdout)
-
-//     log.SetLevel(logrus.ErrorLevel)
-
-//     log.SetReportCaller(true)
-// }
 
 type Hub struct {
 	message chan socket.Message
@@ -54,7 +36,7 @@ func InitHub(c *websocket.Conn, bot Bot) *Hub {
 	return &hub
 }
 
-func (hub *Hub) HandleMsg(msg socket.Message) {
+func (hub *Hub) OnMessage(msg socket.Message) {
 	hub.message <- msg
 }
 
@@ -85,7 +67,6 @@ func (hub *Hub) handleMsg(msg socket.Message) {
 				go func() {
 					var x, y int
 					move, _ := hub.bot.GetMove(hub.player, hub.game)
-					time.Sleep(time.Hour)
 					x = move.X
 					y = move.Y
 					// input := make(chan interface{})
