@@ -13,14 +13,16 @@ import (
 )
 
 func run(ctx *cli.Context) error {
-	var addr = ctx.String("addr")
-	var port = ctx.Int("port")
+
+	var (
+		addr = ctx.String("addr")
+		port = ctx.Int("port")
+		host string
+	)
 
 	logrus.Printf("Client is connecting to %s:%d", addr, port)
 
 	// === Take options
-	var host string
-
 	if ctx.String("join") != "" {
 		host = fmt.Sprintf("ws://%s:%d/join_hub?hub=%s", addr, port, ctx.String("join"))
 	} else if ctx.Bool("creat") {

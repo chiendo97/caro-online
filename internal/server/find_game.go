@@ -24,6 +24,12 @@ func (core *coreServer) FindGame(conn *websocket.Conn) {
 		defer ticker.Stop()
 
 		for {
+
+			err := conn.WriteMessage(websocket.PingMessage, []byte{})
+			if err != nil {
+				break
+			}
+
 			select {
 			case <-ticker.C:
 				if ok := core.findPlayer(conn); ok {
@@ -41,6 +47,12 @@ func (core *coreServer) FindGame(conn *websocket.Conn) {
 
 func (core *coreServer) findHub(conn *websocket.Conn, gameID string) bool {
 
+	// Check connection
+	err := conn.WriteMessage(websocket.PingMessage, []byte{})
+	if err != nil {
+		return true
+	}
+
 	core.mux.Lock()
 	defer core.mux.Unlock()
 
@@ -54,6 +66,12 @@ func (core *coreServer) findHub(conn *websocket.Conn, gameID string) bool {
 
 func (core *coreServer) findPlayer(conn *websocket.Conn) bool {
 
+	// Check connection
+	err := conn.WriteMessage(websocket.PingMessage, []byte{})
+	if err != nil {
+		return true
+	}
+
 	core.mux.Lock()
 	defer core.mux.Unlock()
 
@@ -61,18 +79,12 @@ func (core *coreServer) findPlayer(conn *websocket.Conn) bool {
 		return true
 	}
 
-	err := conn.WriteMessage(websocket.PingMessage, []byte{})
-	if err != nil {
-		return true
-	}
-
-	// log.Warnf("%v=%v", conn.RemoteAddr(), len(core.players))
 	for player := range core.players {
 		if conn == player {
 			continue
 		}
 
-		logrus.Warnf("DEBUG: %v=%v", conn.RemoteAddr(), player.RemoteAddr())
+		logrus.Debugf("Match: %v=%v", conn.RemoteAddr(), player.RemoteAddr())
 
 		delete(core.players, player)
 		delete(core.players, conn)
