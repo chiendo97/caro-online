@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/chiendo97/caro-online/internal/client"
+	"github.com/chiendo97/caro-online/internal/game"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -28,7 +29,7 @@ func run(ctx *cli.Context) error {
 				return
 			}
 
-			hub := client.InitHub(c, &client.RandomBot{})
+			hub := client.InitHub(c, &game.RandomBot{})
 
 			if err := hub.Run(); err != nil {
 				logrus.Errorf("Hub run err: %v", err)

@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
@@ -11,24 +12,21 @@ import (
 )
 
 type Hub struct {
-	message chan socket.Message
-
-	player game.Player
-	game   game.Game
-	bot    Bot
+	mux sync.Mutex
 
 	socket socket.Socket
 
-	inputLock    bool
-	inputChannel chan chan interface{}
+	player game.Player
+	game   game.Game
+	bot    game.Bot
+
+	doneC chan int
 }
 
 // InitHub init new client hub
-func InitHub(c *websocket.Conn, bot Bot) *Hub {
+func InitHub(c *websocket.Conn, bot game.Bot) *Hub {
 	var hub = Hub{
-		bot:          bot,
-		message:      make(chan socket.Message),
-		inputChannel: InpupChannel(),
+		bot: bot,
 	}
 
 	hub.socket = socket.InitSocket(c, &hub)
@@ -36,18 +34,22 @@ func InitHub(c *websocket.Conn, bot Bot) *Hub {
 	return &hub
 }
 
-func (hub *Hub) OnMessage(msg socket.Message) {
-	hub.message <- msg
-}
-
 func (hub *Hub) OnLeave(s socket.Socket) {
-	s.CloseMessage()
-	logrus.Debugf("Server disconnect")
+
+	hub.mux.Lock()
+	defer hub.mux.Unlock()
+
+	if hub.socket != nil && hub.socket == s {
+		hub.socket.CloseMessage()
+		hub.socket = nil
+		logrus.Infof("Server disconnect")
+	}
 }
 
-func (hub *Hub) handleMsg(msg socket.Message) {
+func (hub *Hub) OnMessage(msg socket.Message) {
 
-	hub.inputLock = false
+	hub.mux.Lock()
+	defer hub.mux.Unlock()
 
 	switch msg.Type {
 	case socket.AnnouncementMessageType:
@@ -57,48 +59,36 @@ func (hub *Hub) handleMsg(msg socket.Message) {
 		hub.player = msg.Player
 		hub.game = msg.Game
 
+		// TODO: option to render
 		// hub.game.Render()
 
 		switch hub.game.Status {
 		case game.Running:
 			if hub.player == hub.game.Player {
-				hub.inputLock = true
 				logrus.Debugf("Your turn: \n")
 				go func() {
-					var x, y int
-					move, _ := hub.bot.GetMove(hub.player, hub.game)
-					x = move.X
-					y = move.Y
-					// input := make(chan interface{})
-					// hub.inputChannel <- input
-					// xs := <-input
-					// hub.inputChannel <- input
-					// ys := <-input
-					// x, _ = strconv.Atoi(xs.(string))
-					// y, _ = strconv.Atoi(ys.(string))
 
-					if hub.inputLock == true {
-						var msg = socket.GenerateMoveMsg(game.Move{
-							X:      x,
-							Y:      y,
-							Player: hub.player,
-						})
-
-						hub.socket.SendMessage(msg)
+					move, err := hub.bot.GetMove(hub.player, hub.game)
+					if err != nil {
+						logrus.Errorf("GetMove err: %v", err)
 					}
 
+					hub.socket.SendMessage(socket.GenerateMoveMsg(move))
 				}()
 			} else {
 				logrus.Debugf("Enemy turn.")
 			}
-		case game.XWin, game.OWin:
-			if hub.player == hub.game.Status.GetPlayer() {
-				logrus.Debugf("You won !!!")
-			} else {
-				logrus.Debugf("Your opponent won, good luck next !!")
+		default:
+			switch hub.game.Status {
+			case game.XWin, game.OWin:
+				if hub.player == hub.game.Status.GetPlayer() {
+					logrus.Debugf("You won !!!")
+				} else {
+					logrus.Debugf("Your opponent won, good luck next !!")
+				}
+			case game.Tie:
+				logrus.Debugf("Game tie!!")
 			}
-		case game.Tie:
-			logrus.Debugf("Game tie!!")
 		}
 
 	default:
@@ -108,28 +98,14 @@ func (hub *Hub) handleMsg(msg socket.Message) {
 
 func (hub *Hub) Run() error {
 
-	errC := make(chan error)
-
-	go func() {
-		err1, err2 := hub.socket.Run()
-		if err1 != nil || err2 != nil {
-			errC <- fmt.Errorf("%v:%v", err1, err2)
-		} else {
-			errC <- nil
-		}
-	}()
-
-	for {
-		select {
-		case msg := <-hub.message:
-			hub.handleMsg(msg)
-		case err := <-errC:
-			logrus.Debugf("Hub shutdown")
-			return err
-		}
+	err1, err2 := hub.socket.Run()
+	if err1 != nil || err2 != nil {
+		return fmt.Errorf("%v:%v", err1, err2)
 	}
+
+	return nil
 }
 
 func (hub *Hub) Stop() {
-	hub.socket.CloseMessage()
+	hub.OnLeave(hub.socket)
 }

@@ -1,32 +1,36 @@
-package client
+package game
 
 import (
+	"fmt"
 	"math/rand"
-
-	"github.com/chiendo97/caro-online/internal/game"
 )
 
 type Bot interface {
-	GetMove(game.Player, game.Game) (game.Move, error)
+	GetMove(Player, Game) (Move, error)
 }
 
 type RandomBot struct{}
 
-func (bot *RandomBot) GetMove(p game.Player, g game.Game) (game.Move, error) {
+func (bot *RandomBot) GetMove(p Player, g Game) (Move, error) {
 	var x, y int
+	var count = 0
 	for {
+		if count == g.Board.Height*g.Board.Width {
+			return Move{}, fmt.Errorf("Can not find any move")
+		}
 		x = rand.Intn(g.Board.Height)
 		y = rand.Intn(g.Board.Width)
-		if err := g.IsValidMove(game.Move{
+		if err := g.IsValidMove(Move{
 			X:      x,
 			Y:      y,
 			Player: p,
 		}); err != nil {
+			count++
 			continue
 		}
 		break
 	}
-	return game.Move{
+	return Move{
 		X:      x,
 		Y:      y,
 		Player: p,
