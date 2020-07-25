@@ -43,7 +43,7 @@ func run(c *cli.Context) error {
 		<-interrupt
 		core.Stop()
 		if err := service.Shutdown(); err != nil {
-			logrus.Errorf("Server shutdown error: %v", err)
+			logrus.Errorf("Shutdown server error: %v", err)
 		}
 	}()
 
