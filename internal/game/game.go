@@ -49,7 +49,7 @@ func (g Game) Copy() Game {
 		Player: g.Player,
 		Board:  initBoard(g.Board.Width, g.Board.Height),
 	}
-	for i, _ := range newGame.Board.Cells {
+	for i := range newGame.Board.Cells {
 		copy(newGame.Board.Cells[i], g.Board.Cells[i])
 	}
 	return newGame
