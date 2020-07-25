@@ -69,11 +69,12 @@ func (hub *Hub) UnRegister(s socket.Socket) {
 
 		hub.broadcast()
 
-		if len(hub.players) == 1 {
-			go hub.core.Register(hub)
-		} else {
-			go hub.core.UnRegister(hub)
-		}
+		// TODO: refactor refind game
+		// if len(hub.players) == 1 {
+		//     go hub.core.Register(hub)
+		// } else {
+		//     go hub.core.UnRegister(hub)
+		// }
 
 		s.CloseMessage()
 	}

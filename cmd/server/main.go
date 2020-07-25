@@ -6,23 +6,23 @@ import (
 	"path"
 	"runtime"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
 func init() {
-	log.SetFormatter(&log.TextFormatter{
+	logrus.SetFormatter(&logrus.TextFormatter{
 		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
 			filename := path.Base(f.File)
 			return "", fmt.Sprintf(" %s:%d\t", filename, f.Line)
 		},
 	})
 
-	log.SetOutput(os.Stdout)
+	logrus.SetOutput(os.Stdout)
 
-	log.SetLevel(log.DebugLevel)
+	logrus.SetLevel(logrus.DebugLevel)
 
-	log.SetReportCaller(true)
+	logrus.SetReportCaller(true)
 }
 
 func main() {
@@ -43,6 +43,6 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Error(err)
+		logrus.Error(err)
 	}
 }

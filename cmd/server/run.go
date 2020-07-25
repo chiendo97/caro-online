@@ -30,7 +30,7 @@ func run(c *cli.Context) error {
 
 	go func() {
 		interrupt := make(chan os.Signal, 1)
-		signal.Notify(interrupt, os.Interrupt)
+		signal.Notify(interrupt, os.Interrupt, os.Kill)
 		<-interrupt
 		if err := service.Shutdown(); err != nil {
 			logrus.Errorf("Shutdown server error: %v", err)
