@@ -40,7 +40,7 @@ func (hub *Hub) OnMessage(msg socket.Message) {
 	hub.message <- msg
 }
 
-func (hub *Hub) UnRegister(s socket.Socket) {
+func (hub *Hub) OnLeave(s socket.Socket) {
 	s.CloseMessage()
 	logrus.Debugf("Server disconnect")
 }

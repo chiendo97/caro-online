@@ -56,11 +56,11 @@ func (hub *Hub) OnMessage(msg socket.Message) {
 	hub.broadcast()
 
 	if hub.game.Status != game.Running {
-		go hub.core.UnRegister(hub)
+		go hub.core.OnLeave(hub)
 	}
 }
 
-func (hub *Hub) UnRegister(s socket.Socket) {
+func (hub *Hub) OnLeave(s socket.Socket) {
 	hub.mux.Lock()
 	defer hub.mux.Unlock()
 
@@ -73,7 +73,7 @@ func (hub *Hub) UnRegister(s socket.Socket) {
 		// if len(hub.players) == 1 {
 		//     go hub.core.Register(hub)
 		// } else {
-		//     go hub.core.UnRegister(hub)
+		//     go hub.core.OnLeave(hub)
 		// }
 
 		s.CloseMessage()
@@ -124,14 +124,10 @@ func (hub *Hub) broadcast() {
 		var msg = socket.GenerateAnnouncementMsg(fmt.Sprintf("hub %s: wait for players", hub.key))
 		for socket := range hub.players {
 			socket.SendMessage(msg)
-			// logrus.Debugf("hub %s: send (%s) to (%s)", hub.key, msg, socket.GetSocketIPAddress())
 		}
 	} else {
 		for s, player := range hub.players {
-			var game = hub.game
-			var msg = socket.GenerateGameMsg(player, game)
-			s.SendMessage(msg)
-			// logrus.Debugf("hub %s: send (%s) to (%s)", hub.key, msg, s.GetSocketIPAddress())
+			s.SendMessage(socket.GenerateGameMsg(player, hub.game))
 		}
 	}
 
@@ -143,10 +139,14 @@ func (hub *Hub) Run() error {
 		select {
 		case <-hub.doneC:
 			for socket := range hub.players {
-				hub.UnRegister(socket)
+				hub.OnLeave(socket)
 			}
 			hub.playerWG.Wait()
 			return nil
 		}
 	}
+}
+
+func (hub *Hub) Stop() {
+	close(hub.doneC)
 }

@@ -1,8 +1,8 @@
 package socket
 
 type Hub interface {
-	// OnMessage is a function handling Msg
+	// OnMessage is a handle function when Msg comes
 	OnMessage(msg Message)
-	// UnRegister is a function handling when socket is closed
-	UnRegister(s Socket)
+	// OnLeave is a handle function when socket is closed
+	OnLeave(s Socket)
 }

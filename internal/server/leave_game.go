@@ -6,7 +6,7 @@ func (core *coreServer) leaveHub(hub *Hub) {
 
 	logrus.Infof("core: delete hub (%s)", hub.key)
 
-	close(hub.doneC)
+	hub.Stop()
 	delete(core.hubs, hub.key)
 }
 

@@ -100,7 +100,7 @@ func (c *socket) write() error {
 
 func (c *socket) read() error {
 	defer func() {
-		go c.hub.UnRegister(c)
+		go c.hub.OnLeave(c)
 	}()
 
 	for {

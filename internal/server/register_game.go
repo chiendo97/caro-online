@@ -9,7 +9,7 @@ func (core *coreServer) Register(hub *Hub) {
 	core.availHub <- hub.key
 }
 
-func (core *coreServer) UnRegister(hub *Hub) {
+func (core *coreServer) OnLeave(hub *Hub) {
 
 	core.mux.Lock()
 	defer core.mux.Unlock()
