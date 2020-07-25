@@ -20,6 +20,8 @@ func (core *coreServer) FindGame(conn *websocket.Conn) {
 
 	go func() {
 
+		defer delete(core.players, conn)
+
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
 
@@ -87,7 +89,6 @@ func (core *coreServer) findPlayer(conn *websocket.Conn) bool {
 		logrus.Debugf("Match: %v=%v", conn.RemoteAddr(), player.RemoteAddr())
 
 		delete(core.players, player)
-		delete(core.players, conn)
 
 		var gameId = uuid.New().String()[:8]
 		var hub = initHub(core, gameId)
