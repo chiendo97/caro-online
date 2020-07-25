@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 
 	"github.com/chiendo97/caro-online/internal/server"
 	"github.com/gorilla/websocket"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 type service struct {
@@ -49,12 +50,31 @@ func (s *service) buildAPI() {
 }
 
 func (s *service) ListenAndServe(port int) error {
-	log.Info("Server is running on port ", port)
+	logrus.Info("Server is running on port ", port)
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err := s.core.Run()
+		if err != nil {
+			logrus.Errorf("Core run error: %v", err)
+			return
+		}
+	}()
+
+	defer func() {
+		s.core.Stop()
+		wg.Wait()
+	}()
 
 	err := s.server.ListenAndServe()
 	if err != nil && err != http.ErrServerClosed {
 		return err
 	}
+	logrus.Info("Server stop")
+
 	return nil
 }
 

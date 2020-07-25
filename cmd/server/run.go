@@ -28,20 +28,10 @@ func run(c *cli.Context) error {
 		wg.Done()
 	}()
 
-	wg.Add(1)
-	go func() {
-		err := core.Run()
-		if err != nil {
-			logrus.Errorf("Core run error: %v", err)
-		}
-		wg.Done()
-	}()
-
 	go func() {
 		interrupt := make(chan os.Signal, 1)
 		signal.Notify(interrupt, os.Interrupt)
 		<-interrupt
-		core.Stop()
 		if err := service.Shutdown(); err != nil {
 			logrus.Errorf("Shutdown server error: %v", err)
 		}
