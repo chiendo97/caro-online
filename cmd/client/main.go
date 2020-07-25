@@ -11,16 +11,18 @@ import (
 )
 
 func init() {
-	logrus.SetFormatter(&logrus.TextFormatter{
-		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
-			filename := path.Base(f.File)
-			return "", fmt.Sprintf(" %s:%d\t", filename, f.Line)
+	logrus.SetFormatter(
+		&logrus.TextFormatter{
+			CallerPrettyfier: func(f *runtime.Frame) (string, string) {
+				filename := path.Base(f.File)
+				return "", fmt.Sprintf("%-20s", fmt.Sprintf(" %s:%d ", filename, f.Line))
+			},
 		},
-	})
+	)
 
 	logrus.SetOutput(os.Stdout)
 
-	logrus.SetLevel(logrus.WarnLevel)
+	logrus.SetLevel(logrus.InfoLevel)
 
 	logrus.SetReportCaller(true)
 }
@@ -31,24 +33,17 @@ func main() {
 		Name:  "caro-online",
 		Usage: "run caro-online client",
 		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:    "find",
-				Usage:   "Find Game",
-				Aliases: []string{"f"},
-				Value:   true,
-			},
-			&cli.BoolFlag{
-				Name:    "create",
-				Usage:   "Create Game",
-				Aliases: []string{"c"},
-				Value:   false,
+			&cli.StringFlag{
+				Name:        "option",
+				Usage:       "find | join | create",
+				Aliases:     []string{"o"},
+				Value:       "find",
+				DefaultText: "find",
 			},
 			&cli.StringFlag{
-				Name:        "join",
-				Usage:       "Join game ID",
-				Aliases:     []string{"j"},
-				DefaultText: "",
-				Value:       "",
+				Name:    "gameID",
+				Usage:   "gameID for joinning game",
+				Aliases: []string{"g"},
 			},
 			&cli.StringFlag{
 				Name:        "addr",

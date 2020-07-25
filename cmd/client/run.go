@@ -23,12 +23,15 @@ func run(ctx *cli.Context) error {
 	logrus.Printf("Client is connecting to %s:%d", addr, port)
 
 	// === Take options
-	if ctx.String("join") != "" {
-		host = fmt.Sprintf("ws://%s:%d/join_hub?hub=%s", addr, port, ctx.String("join"))
-	} else if ctx.Bool("creat") {
-		host = fmt.Sprintf("ws://%s:%d/create_hub", addr, port)
-	} else if ctx.Bool("find") {
+	switch ctx.String("option") {
+	case "find":
 		host = fmt.Sprintf("ws://%s:%d/find_hub", addr, port)
+	case "join":
+		host = fmt.Sprintf("ws://%s:%d/join_hub?hub=%s", addr, port, ctx.String("gameID"))
+	case "create":
+		host = fmt.Sprintf("ws://%s:%d/create_hub", addr, port)
+	default:
+		return fmt.Errorf("Invalid option: %s", ctx.String("option"))
 	}
 
 	if host == "" {
