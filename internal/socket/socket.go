@@ -77,6 +77,8 @@ func (c *socket) Run() (error, error) {
 
 func (c *socket) write() error {
 
+	defer c.conn.Close()
+
 	for {
 		select {
 		case msg, ok := <-c.msgC:
