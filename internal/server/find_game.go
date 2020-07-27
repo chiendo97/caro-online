@@ -20,12 +20,15 @@ func (core *coreServer) FindGame(conn *websocket.Conn) {
 
 	go func() {
 
-		defer delete(core.players, conn)
-
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
 
 		for {
+
+			core.mux.Lock()
+			defer core.mux.Unlock()
+
+			// defer delete(core.players, conn)
 
 			err := conn.WriteMessage(websocket.PingMessage, []byte{})
 			if err != nil {
@@ -55,8 +58,8 @@ func (core *coreServer) findHub(conn *websocket.Conn, gameID string) bool {
 		return true
 	}
 
-	core.mux.Lock()
-	defer core.mux.Unlock()
+	// core.mux.Lock()
+	// defer core.mux.Unlock()
 
 	if _, ok := core.hubs[gameID]; !ok {
 		return false
@@ -74,8 +77,8 @@ func (core *coreServer) findPlayer(conn *websocket.Conn) bool {
 		return true
 	}
 
-	core.mux.Lock()
-	defer core.mux.Unlock()
+	// core.mux.Lock()
+	// defer core.mux.Unlock()
 
 	if _, ok := core.players[conn]; !ok {
 		return true

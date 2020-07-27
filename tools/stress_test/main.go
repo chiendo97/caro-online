@@ -11,16 +11,18 @@ import (
 )
 
 func init() {
-	logrus.SetFormatter(&logrus.TextFormatter{
-		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
-			filename := path.Base(f.File)
-			return "", fmt.Sprintf(" %s:%d\t", filename, f.Line)
+	logrus.SetFormatter(
+		&logrus.TextFormatter{
+			CallerPrettyfier: func(f *runtime.Frame) (string, string) {
+				filename := path.Base(f.File)
+				return "", fmt.Sprintf("%-20s", fmt.Sprintf(" %s:%d ", filename, f.Line))
+			},
 		},
-	})
+	)
 
 	logrus.SetOutput(os.Stdout)
 
-	logrus.SetLevel(logrus.InfoLevel)
+	logrus.SetLevel(logrus.ErrorLevel)
 
 	logrus.SetReportCaller(true)
 }
