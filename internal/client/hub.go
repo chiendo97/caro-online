@@ -42,7 +42,7 @@ func (hub *Hub) OnLeave(s socket.Socket) {
 	if hub.socket != nil && hub.socket == s {
 		hub.socket.CloseMessage()
 		hub.socket = nil
-		logrus.Infof("Server disconnect")
+		logrus.Debugf("Server disconnect")
 	}
 }
 
@@ -53,7 +53,7 @@ func (hub *Hub) OnMessage(msg socket.Message) {
 
 	switch msg.Type {
 	case socket.AnnouncementMessageType:
-		logrus.Infof("Server: %s\n", msg.Announcement)
+		logrus.Debugf("Server: %s\n", msg.Announcement)
 
 	case socket.GameMessageType:
 		hub.player = msg.Player
@@ -65,7 +65,7 @@ func (hub *Hub) OnMessage(msg socket.Message) {
 		switch hub.game.Status {
 		case game.Running:
 			if hub.player == hub.game.Player {
-				logrus.Infof("Your turn: \n")
+				logrus.Debugf("Your turn: \n")
 				go func() {
 
 					move, err := hub.bot.GetMove(hub.player, hub.game)
@@ -76,18 +76,18 @@ func (hub *Hub) OnMessage(msg socket.Message) {
 					hub.socket.SendMessage(socket.GenerateMoveMsg(move))
 				}()
 			} else {
-				logrus.Infof("Enemy turn.")
+				logrus.Debugf("Enemy turn.")
 			}
 		default:
 			switch hub.game.Status {
 			case game.XWin, game.OWin:
 				if hub.player == hub.game.Status.GetPlayer() {
-					logrus.Infof("You won !!!")
+					logrus.Debugf("You won !!!")
 				} else {
-					logrus.Infof("Your opponent won, good luck next !!")
+					logrus.Debugf("Your opponent won, good luck next !!")
 				}
 			case game.Tie:
-				logrus.Infof("Game tie!!")
+				logrus.Debugf("Game tie!!")
 			}
 		}
 
