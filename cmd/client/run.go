@@ -20,7 +20,7 @@ func run(ctx *cli.Context) error {
 		host string
 	)
 
-	logrus.Printf("Client is connecting to %s:%d", addr, port)
+	logrus.Infof("Client is connecting to %s:%d", addr, port)
 
 	// === Take options
 	switch ctx.String("option") {

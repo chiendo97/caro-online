@@ -1,34 +1,14 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"path"
-	"runtime"
-
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
+
+	"github.com/chiendo97/caro-online/cmd"
 )
 
-func init() {
-	logrus.SetFormatter(
-		&logrus.TextFormatter{
-			CallerPrettyfier: func(f *runtime.Frame) (string, string) {
-				filename := path.Base(f.File)
-				return "", fmt.Sprintf("%-20s", fmt.Sprintf(" %s:%d ", filename, f.Line))
-			},
-		},
-	)
-
-	logrus.SetOutput(os.Stdout)
-
-	logrus.SetLevel(logrus.InfoLevel)
-
-	logrus.SetReportCaller(true)
-}
-
 func main() {
-	app := &cli.App{
+	app := cmd.App{
 		Name:  "caro-online",
 		Usage: "run caro-online server",
 		Flags: []cli.Flag{
@@ -43,7 +23,7 @@ func main() {
 		Action: run,
 	}
 
-	err := app.Run(os.Args)
+	err := cmd.RunApp(app)
 	if err != nil {
 		logrus.Error(err)
 	}
