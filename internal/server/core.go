@@ -17,8 +17,8 @@ type CoreServer interface {
 }
 
 type coreServer struct {
-	mux   sync.Mutex
-	hubWG sync.WaitGroup
+	mux sync.Mutex
+	// hubWG sync.WaitGroup
 
 	hubs     map[string]*Hub
 	availHub chan string
@@ -48,18 +48,19 @@ func (core *coreServer) Run() error {
 	logrus.Infof("Core start")
 	defer logrus.Infof("Core stop")
 
-	for {
-		select {
-		case <-core.done:
-			core.leaveAllHubs()
+	// for {
+	//     select {
+	//     case <-core.done:
+	//         core.leaveAllHubs()
 
-			core.hubWG.Wait()
-			return nil
-		}
-	}
+	// core.hubWG.Wait()
+	//         return nil
+	//     }
+	// }
 
+	return nil
 }
 
 func (core *coreServer) Stop() {
-	close(core.done)
+	// close(core.done)
 }

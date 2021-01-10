@@ -17,8 +17,7 @@ func (core *coreServer) JoinGame(conn *websocket.Conn, gameId string) {
 
 	if !ok {
 		logrus.Warn("core: hub not found - ", gameId, conn.RemoteAddr())
-		conn.WriteMessage(websocket.CloseMessage, []byte{})
-
+		// conn.WriteMessage(websocket.CloseMessage, []byte{})
 		return
 	}
 

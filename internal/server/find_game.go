@@ -25,11 +25,10 @@ func (core *coreServer) FindGame(conn *websocket.Conn) {
 		defer delete(core.players, conn)
 
 		for {
-
-			err := conn.WriteMessage(websocket.PingMessage, []byte{})
-			if err != nil {
-				break
-			}
+			// err := conn.WriteMessage(websocket.PingMessage, []byte{})
+			// if err != nil {
+			//     break
+			// }
 
 			select {
 			case <-ticker.C:
@@ -57,7 +56,7 @@ func (core *coreServer) findHub(conn *websocket.Conn, gameID string) bool {
 	core.mux.Lock()
 	defer core.mux.Unlock()
 
-	if _, ok := core.hubs[gameID]; !ok {
+	if _, found := core.hubs[gameID]; !found {
 		return false
 	}
 
@@ -68,15 +67,15 @@ func (core *coreServer) findHub(conn *websocket.Conn, gameID string) bool {
 func (core *coreServer) findPlayer(conn *websocket.Conn) bool {
 
 	// Check connection
-	err := conn.WriteMessage(websocket.PingMessage, []byte{})
-	if err != nil {
-		return true
-	}
+	// err := conn.WriteMessage(websocket.PingMessage, []byte{})
+	// if err != nil {
+	//     return true
+	// }
 
 	core.mux.Lock()
 	defer core.mux.Unlock()
 
-	if _, ok := core.players[conn]; !ok {
+	if _, found := core.players[conn]; !found {
 		return true
 	}
 
@@ -94,14 +93,14 @@ func (core *coreServer) findPlayer(conn *websocket.Conn) bool {
 
 		core.hubs[gameId] = hub
 
-		core.hubWG.Add(1)
-		go func() {
-			err := hub.Run()
-			if err != nil {
-				logrus.Errorf("hub run error: %v", err)
-			}
-			core.hubWG.Done()
-		}()
+		// core.hubWG.Add(1)
+		// go func() {
+		//     err := hub.Run()
+		//     if err != nil {
+		//         logrus.Errorf("hub run error: %v", err)
+		//     }
+		//     core.hubWG.Done()
+		// }()
 
 		go func() {
 			hub.OnEnter(socket.InitSocket(conn, hub))

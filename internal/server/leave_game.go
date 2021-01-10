@@ -6,16 +6,16 @@ func (core *coreServer) leaveHub(hub *Hub) {
 
 	logrus.Infof("core: delete hub (%s)", hub.key)
 
-	hub.Stop()
+	// hub.Stop()
 	delete(core.hubs, hub.key)
 }
 
-func (core *coreServer) leaveAllHubs() {
+// func (core *coreServer) leaveAllHubs() {
 
-	core.mux.Lock()
-	defer core.mux.Unlock()
+//     core.mux.Lock()
+//     defer core.mux.Unlock()
 
-	for _, hub := range core.hubs {
-		core.leaveHub(hub)
-	}
-}
+//     for _, hub := range core.hubs {
+//         core.leaveHub(hub)
+//     }
+// }

@@ -14,26 +14,15 @@ func (core *coreServer) CreateGame(conn *websocket.Conn) {
 
 	var gameId = uuid.New().String()[:8]
 
-	_, ok := core.hubs[gameId]
-	if ok {
+	if _, found := core.hubs[gameId]; found {
 		logrus.Error("Key duplicate: ", gameId, conn.RemoteAddr())
 	}
 
 	var hub = initHub(core, gameId)
-
 	core.hubs[gameId] = hub
 
 	go func() {
 		core.Register(hub)
-	}()
-
-	core.hubWG.Add(1)
-	go func() {
-		err := hub.Run()
-		if err != nil {
-			logrus.Errorf("hub run error: %v", err)
-		}
-		core.hubWG.Done()
 	}()
 
 	go func() {

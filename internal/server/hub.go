@@ -22,7 +22,6 @@ type Hub struct {
 }
 
 func initHub(core *coreServer, key string) *Hub {
-
 	var hub = Hub{
 		core:    core,
 		key:     key,
@@ -36,7 +35,6 @@ func initHub(core *coreServer, key string) *Hub {
 }
 
 func (hub *Hub) OnMessage(msg socket.Message) {
-
 	hub.mux.Lock()
 	defer hub.mux.Unlock()
 
@@ -81,7 +79,6 @@ func (hub *Hub) OnLeave(s socket.Socket) {
 }
 
 func (hub *Hub) OnEnter(s socket.Socket) {
-
 	hub.mux.Lock()
 	defer hub.mux.Unlock()
 
@@ -134,19 +131,8 @@ func (hub *Hub) broadcast() {
 }
 
 func (hub *Hub) Run() error {
-
-	for {
-		select {
-		case <-hub.doneC:
-			for socket := range hub.players {
-				hub.OnLeave(socket)
-			}
-			hub.playerWG.Wait()
-			return nil
-		}
-	}
+	return nil
 }
 
 func (hub *Hub) Stop() {
-	close(hub.doneC)
 }
