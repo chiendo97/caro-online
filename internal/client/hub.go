@@ -33,7 +33,7 @@ func InitHub(c *websocket.Conn, bot game.Bot) *Hub {
 }
 
 func (hub *Hub) OnLeave(s socket.Socket) {
-	hub.socket.CloseMessage()
+	hub.socket.Stop()
 }
 
 func (hub *Hub) OnMessage(msg socket.Message) {

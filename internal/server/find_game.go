@@ -1,10 +1,11 @@
 package server
 
 import (
+	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/chiendo97/caro-online/internal/socket"
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 )
@@ -31,13 +32,6 @@ func (core *coreServer) FindGame(conn *websocket.Conn) {
 }
 
 func (core *coreServer) findPlayer(conn *websocket.Conn) bool {
-
-	// Check connection
-	// err := conn.WriteMessage(websocket.PingMessage, []byte{})
-	// if err != nil {
-	//     return true
-	// }
-
 	core.mux.Lock()
 	defer core.mux.Unlock()
 
@@ -55,7 +49,8 @@ func (core *coreServer) findPlayer(conn *websocket.Conn) bool {
 		delete(core.players, conn)
 		delete(core.players, player)
 
-		var gameId = uuid.New().String()[:8]
+		atomic.AddInt64(&core.idGenerator, 1)
+		var gameId = fmt.Sprintf("%d", core.idGenerator)
 		var hub = initHub(core, gameId)
 
 		core.hubs[gameId] = hub

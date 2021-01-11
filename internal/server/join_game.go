@@ -1,9 +1,10 @@
 package server
 
 import (
-	"github.com/chiendo97/caro-online/internal/socket"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
+
+	"github.com/chiendo97/caro-online/internal/socket"
 )
 
 func (core *coreServer) JoinGame(conn *websocket.Conn, gameId string) {

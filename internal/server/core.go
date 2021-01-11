@@ -16,6 +16,8 @@ type coreServer struct {
 	mux     sync.Mutex
 	hubs    map[string]*Hub
 	players map[*websocket.Conn]bool
+
+	idGenerator int64
 }
 
 func InitCoreServer() CoreServer {

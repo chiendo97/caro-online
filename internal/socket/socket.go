@@ -9,14 +9,11 @@ import (
 )
 
 type Socket interface {
-	// GetSocketIPAddress returns ip address of socket
 	GetSocketIPAddress() string
-
 	SendMessage(msg Message)
 
 	Run() (error, error)
-
-	CloseMessage()
+	Stop()
 }
 
 type socket struct {
@@ -42,7 +39,7 @@ func (s *socket) SendMessage(msg Message) {
 	s.msgC <- msg
 }
 
-func (s *socket) CloseMessage() {
+func (s *socket) Stop() {
 	s.once.Do(func() {
 		s.mux.Lock()
 		defer s.mux.Unlock()

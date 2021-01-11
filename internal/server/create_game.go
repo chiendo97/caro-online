@@ -1,20 +1,25 @@
 package server
 
 import (
-	"github.com/chiendo97/caro-online/internal/socket"
-	"github.com/google/uuid"
+	"fmt"
+	"sync/atomic"
+
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
+
+	"github.com/chiendo97/caro-online/internal/socket"
 )
 
 func (core *coreServer) CreateGame(conn *websocket.Conn) {
 	core.mux.Lock()
 	defer core.mux.Unlock()
 
-	var gameId = uuid.New().String()[:8]
+	atomic.AddInt64(&core.idGenerator, 1)
+	var gameId = fmt.Sprintf("%d", core.idGenerator)
 
 	if _, found := core.hubs[gameId]; found {
 		logrus.Error("Key duplicate: ", gameId, conn.RemoteAddr())
+		return
 	}
 
 	var hub = initHub(core, gameId)
