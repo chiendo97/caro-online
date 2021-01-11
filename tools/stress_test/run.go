@@ -18,7 +18,7 @@ func run(ctx *cli.Context) error {
 	type Worker struct {
 		Id int
 	}
-	var queueSize = 10
+	var queueSize = 100
 	var workerQueue = make(chan Worker, queueSize)
 
 	for i := 0; i < queueSize; i++ {
@@ -32,7 +32,6 @@ func run(ctx *cli.Context) error {
 		for worker := range workerQueue {
 			go func(worker Worker) {
 				defer func() {
-					logrus.Infof("worker %d stop", worker.Id)
 					workerQueue <- worker
 				}()
 

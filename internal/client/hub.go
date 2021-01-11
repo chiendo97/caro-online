@@ -19,8 +19,6 @@ type Hub struct {
 	player game.Player
 	game   game.Game
 	bot    game.Bot
-
-	doneC chan int
 }
 
 // InitHub init new client hub
@@ -35,15 +33,7 @@ func InitHub(c *websocket.Conn, bot game.Bot) *Hub {
 }
 
 func (hub *Hub) OnLeave(s socket.Socket) {
-
-	hub.mux.Lock()
-	defer hub.mux.Unlock()
-
-	if hub.socket != nil && hub.socket == s {
-		hub.socket.CloseMessage()
-		hub.socket = nil
-		logrus.Debugf("Server disconnect")
-	}
+	hub.socket.CloseMessage()
 }
 
 func (hub *Hub) OnMessage(msg socket.Message) {
