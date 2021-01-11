@@ -10,53 +10,24 @@ import (
 )
 
 func (core *coreServer) FindGame(conn *websocket.Conn) {
-
-	logrus.Infof("core: socket (%s) find game", conn.RemoteAddr())
-
 	core.mux.Lock()
 	defer core.mux.Unlock()
+
+	logrus.Infof("core: socket (%s) find game", conn.RemoteAddr())
 
 	core.players[conn] = true
 
 	go func() {
-
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
-		defer delete(core.players, conn)
 
-		for {
-			select {
-			case <-ticker.C:
-				if ok := core.findPlayer(conn); ok {
-					return
-				}
-			case gameID := <-core.availHub:
-				if ok := core.findHub(conn, gameID); ok {
-					return
-				}
+		for range ticker.C {
+			if found := core.findPlayer(conn); !found {
+				continue
 			}
+			break
 		}
 	}()
-
-}
-
-func (core *coreServer) findHub(conn *websocket.Conn, gameID string) bool {
-
-	// Check connection
-	err := conn.WriteMessage(websocket.PingMessage, []byte{})
-	if err != nil {
-		return true
-	}
-
-	core.mux.Lock()
-	defer core.mux.Unlock()
-
-	if _, found := core.hubs[gameID]; !found {
-		return false
-	}
-
-	go core.JoinGame(conn, gameID)
-	return true
 }
 
 func (core *coreServer) findPlayer(conn *websocket.Conn) bool {
@@ -81,6 +52,7 @@ func (core *coreServer) findPlayer(conn *websocket.Conn) bool {
 
 		logrus.Debugf("Match: %v=%v", conn.RemoteAddr(), player.RemoteAddr())
 
+		delete(core.players, conn)
 		delete(core.players, player)
 
 		var gameId = uuid.New().String()[:8]

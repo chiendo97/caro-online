@@ -65,22 +65,12 @@ func (hub *Hub) OnLeave(s socket.Socket) {
 	hub.mux.Lock()
 	defer hub.mux.Unlock()
 
-	logrus.Debug(s.GetSocketIPAddress(), "this one called once")
-
 	if _, found := hub.players[s]; !found {
 		return
 	}
 
-	// s.CloseMessage()
+	s.CloseMessage()
 	delete(hub.players, s)
-
-	// hub.broadcast()
-	// TODO: refactor refind game
-	// if len(hub.players) == 1 {
-	//     go hub.core.Register(hub)
-	// } else {
-	//     go hub.core.OnLeave(hub)
-	// }
 }
 
 func (hub *Hub) OnEnter(s socket.Socket) {
@@ -133,11 +123,4 @@ func (hub *Hub) broadcast() {
 		}
 	}
 
-}
-
-func (hub *Hub) Run() error {
-	return nil
-}
-
-func (hub *Hub) Stop() {
 }

@@ -8,7 +8,6 @@ import (
 )
 
 func (core *coreServer) CreateGame(conn *websocket.Conn) {
-
 	core.mux.Lock()
 	defer core.mux.Unlock()
 
@@ -20,10 +19,6 @@ func (core *coreServer) CreateGame(conn *websocket.Conn) {
 
 	var hub = initHub(core, gameId)
 	core.hubs[gameId] = hub
-
-	go func() {
-		core.Register(hub)
-	}()
 
 	go func() {
 		hub.OnEnter(socket.InitSocket(conn, hub))

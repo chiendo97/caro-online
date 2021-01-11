@@ -102,7 +102,6 @@ func (c *socket) write() error {
 func (c *socket) read() error {
 	defer func() {
 		go c.hub.OnLeave(c)
-		c.CloseMessage()
 	}()
 
 	var msg Message

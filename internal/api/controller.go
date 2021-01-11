@@ -50,29 +50,12 @@ func (s *service) buildAPI() {
 
 func (s *service) ListenAndServe(port int) error {
 	logrus.Info("Server is running on port ", port)
-
-	// var wg sync.WaitGroup
-
-	// wg.Add(1)
-	// go func() {
-	//     defer wg.Done()
-	//     err := s.core.Run()
-	//     if err != nil {
-	//         logrus.Errorf("Core run error: %v", err)
-	//         return
-	//     }
-	// }()
-
-	// defer func() {
-	//     s.core.Stop()
-	//     wg.Wait()
-	// }()
+	defer logrus.Info("Server stop")
 
 	err := s.server.ListenAndServe()
 	if err != nil && err != http.ErrServerClosed {
 		return err
 	}
-	logrus.Info("Server stop")
 
 	return nil
 }
