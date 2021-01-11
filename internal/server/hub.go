@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/chiendo97/caro-online/internal/game"
@@ -51,7 +50,7 @@ func (hub *Hub) OnMessage(msg socket.Message) {
 		hub.game = g
 	}
 
-	hub.broadcast()
+	go hub.broadcast()
 
 	if hub.game.Status != game.Running {
 		for s := range hub.players {
@@ -105,18 +104,21 @@ func (hub *Hub) OnEnter(s socket.Socket) {
 		hub.playerWG.Done()
 	}()
 
-	hub.broadcast()
+	go hub.broadcast()
 
 	logrus.Debugf("hub %s: take new socket %s as player %d", hub.key, s.GetSocketIPAddress(), player)
 }
 
 func (hub *Hub) broadcast() {
 
+	hub.mux.Lock()
+	defer hub.mux.Unlock()
+
 	if len(hub.players) < 2 {
-		var msg = socket.GenerateAnnouncementMsg(fmt.Sprintf("hub %s: wait for players", hub.key))
-		for socket := range hub.players {
-			socket.SendMessage(msg)
-		}
+		// var msg = socket.GenerateAnnouncementMsg(fmt.Sprintf("hub %s: wait for players", hub.key))
+		// for socket := range hub.players {
+		//     socket.SendMessage(msg)
+		// }
 	} else {
 		for s, player := range hub.players {
 			s.SendMessage(socket.GenerateGameMsg(player, hub.game))

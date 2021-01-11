@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
 
 	"github.com/chiendo97/caro-online/internal/server"
 	"github.com/gorilla/websocket"

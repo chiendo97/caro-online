@@ -33,10 +33,10 @@ func (core *coreServer) FindGame(conn *websocket.Conn) {
 func (core *coreServer) findPlayer(conn *websocket.Conn) bool {
 
 	// Check connection
-	err := conn.WriteMessage(websocket.PingMessage, []byte{})
-	if err != nil {
-		return true
-	}
+	// err := conn.WriteMessage(websocket.PingMessage, []byte{})
+	// if err != nil {
+	//     return true
+	// }
 
 	core.mux.Lock()
 	defer core.mux.Unlock()

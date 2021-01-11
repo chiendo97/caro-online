@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
@@ -16,14 +15,32 @@ func run(ctx *cli.Context) error {
 	var host = fmt.Sprintf("ws://%s:%d/find_hub", "localhost", 8080)
 	var errC = make(chan error)
 
+	type Worker struct {
+		Id int
+	}
+	var queueSize = 10
+	var workerQueue = make(chan Worker, queueSize)
+
+	for i := 0; i < queueSize; i++ {
+		var worker = Worker{i}
+		workerQueue <- worker
+	}
+
+	logrus.Info("start")
+
 	go func() {
-		for {
-			time.Sleep(time.Second / 100)
-			go func() {
+		for worker := range workerQueue {
+			go func(worker Worker) {
+				defer func() {
+					logrus.Infof("worker %d stop", worker.Id)
+					workerQueue <- worker
+				}()
+
+				logrus.Infof("worker %d start", worker.Id)
+
 				c, _, err := websocket.DefaultDialer.Dial(host, nil)
 				if err != nil {
-					logrus.Errorf("Dial error: %v", err)
-					errC <- err
+					// logrus.Errorf("Dial error: %v", err)
 					return
 				}
 
@@ -31,7 +48,10 @@ func run(ctx *cli.Context) error {
 				if err := hub.Run(); err != nil {
 					logrus.Errorf("Hub run err: %v", err)
 				}
-			}()
+
+				logrus.Infof("worker %d end", worker.Id)
+
+			}(worker)
 		}
 	}()
 

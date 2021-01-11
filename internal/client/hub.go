@@ -66,15 +66,13 @@ func (hub *Hub) OnMessage(msg socket.Message) {
 		case game.Running:
 			if hub.player == hub.game.Player {
 				logrus.Debugf("Your turn: \n")
-				go func() {
+				move, err := hub.bot.GetMove(hub.player, hub.game)
+				if err != nil {
+					logrus.Errorf("GetMove err: %v", err)
+				}
 
-					move, err := hub.bot.GetMove(hub.player, hub.game)
-					if err != nil {
-						logrus.Errorf("GetMove err: %v", err)
-					}
-
-					hub.socket.SendMessage(socket.GenerateMoveMsg(move))
-				}()
+				msg := socket.GenerateMoveMsg(move)
+				hub.socket.SendMessage(msg)
 			} else {
 				logrus.Debugf("Enemy turn.")
 			}
