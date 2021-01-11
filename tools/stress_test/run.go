@@ -2,43 +2,39 @@ package main
 
 import (
 	"fmt"
-	"sync"
+	"time"
 
-	"github.com/chiendo97/caro-online/internal/client"
-	"github.com/chiendo97/caro-online/internal/game"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
+
+	"github.com/chiendo97/caro-online/internal/client"
+	"github.com/chiendo97/caro-online/internal/game"
 )
 
 func run(ctx *cli.Context) error {
-	var host string
+	var host = fmt.Sprintf("ws://%s:%d/find_hub", "localhost", 8080)
+	var errC = make(chan error)
 
-	host = fmt.Sprintf("ws://%s:%d/find_hub", "localhost", 8080)
+	go func() {
+		for {
+			time.Sleep(time.Second / 100)
+			go func() {
+				c, _, err := websocket.DefaultDialer.Dial(host, nil)
+				if err != nil {
+					logrus.Errorf("Dial error: %v", err)
+					errC <- err
+					return
+				}
 
-	var wg sync.WaitGroup
+				hub := client.InitHub(c, &game.RandomBot{})
+				if err := hub.Run(); err != nil {
+					logrus.Errorf("Hub run err: %v", err)
+				}
+			}()
+		}
+	}()
 
-	for i := 0; i < 200; i++ {
-		wg.Add(1)
-		// time.Sleep(time.Second / 100)
-		go func() {
-			defer wg.Done()
-			c, _, err := websocket.DefaultDialer.Dial(host, nil)
-			if err != nil {
-				logrus.Errorf("Dial error: %v", err)
-				return
-			}
-
-			hub := client.InitHub(c, &game.RandomBot{})
-
-			if err := hub.Run(); err != nil {
-				logrus.Errorf("Hub run err: %v", err)
-				return
-			}
-		}()
-	}
-
-	wg.Wait()
-
-	return nil
+	err := <-errC
+	return err
 }

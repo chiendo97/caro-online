@@ -45,6 +45,7 @@ func run(ctx *cli.Context) error {
 		return fmt.Errorf("Dial error: %v", err)
 	}
 
+	// hub := client.InitHub(c, &client.Player{})
 	hub := client.InitHub(c, &game.RandomBot{})
 
 	errC := make(chan error)

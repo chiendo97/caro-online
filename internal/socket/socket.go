@@ -2,9 +2,10 @@ package socket
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/gorilla/websocket"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 type Socket interface {
@@ -24,6 +25,8 @@ type socket struct {
 	conn *websocket.Conn
 
 	msgC chan Message
+
+	once sync.Once
 }
 
 func (s *socket) SendMessage(msg Message) {
@@ -31,12 +34,9 @@ func (s *socket) SendMessage(msg Message) {
 }
 
 func (s *socket) CloseMessage() {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("Recovered in f", r, s.GetSocketIPAddress())
-		}
-	}()
-	close(s.msgC)
+	s.once.Do(func() {
+		close(s.msgC)
+	})
 }
 
 func InitSocket(conn *websocket.Conn, hub Hub) *socket {
@@ -51,8 +51,8 @@ func InitSocket(conn *websocket.Conn, hub Hub) *socket {
 
 func (c *socket) Run() (error, error) {
 
-	log.Debugf("Socket %v start", c.GetSocketIPAddress())
-	defer log.Debugf("Socket %v stop", c.GetSocketIPAddress())
+	logrus.Debugf("Socket %v start", c.GetSocketIPAddress())
+	defer logrus.Debugf("Socket %v stop", c.GetSocketIPAddress())
 
 	defer func() {
 		c.conn.Close()
@@ -77,44 +77,43 @@ func (c *socket) Run() (error, error) {
 
 func (c *socket) write() error {
 
-	defer c.conn.Close()
+	defer func() {
+		c.conn.Close()
+	}()
 
-	for {
-		select {
-		case msg, ok := <-c.msgC:
-
-			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-				return nil
+	for msg := range c.msgC {
+		err := c.conn.WriteJSON(msg)
+		if err != nil {
+			e, _ := err.(*websocket.CloseError)
+			if e != nil {
+				logrus.Warnf("Write message err code: %v", e.Code)
 			}
-
-			err := c.conn.WriteJSON(msg)
-			if err != nil {
-				e, _ := err.(*websocket.CloseError)
-				if e != nil {
-					log.Warnf("Write message err code: %v", e.Code)
-				}
-				log.Warnf("Write message err: %v", err)
-			}
+			logrus.Warnf("Write message err: %v", err)
+			return err
 		}
 	}
+
+	// if msgC is closed by `CloseMessage`
+	c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+
+	return nil
 }
 
 func (c *socket) read() error {
 	defer func() {
 		go c.hub.OnLeave(c)
+		c.CloseMessage()
 	}()
 
+	var msg Message
 	for {
-		var msg Message
 		err := c.conn.ReadJSON(&msg)
-
 		if err != nil {
 			if !websocket.IsUnexpectedCloseError(err, websocket.CloseAbnormalClosure, websocket.CloseNormalClosure) {
 				return nil
 			}
 			e, _ := err.(*websocket.CloseError)
-			log.Infof("socket: error read socket %v %v", err, e)
+			logrus.Errorf("socket: error read socket %v %v", err, e)
 			return err
 		}
 
