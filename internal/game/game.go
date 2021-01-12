@@ -8,7 +8,7 @@ const (
 	defaultWidth  = 20
 	defaultHeight = 20
 
-	defaultWinLength = 5
+	defaultWinLength = 2
 )
 
 var row = []int{-1, -1, -1, 0, 1, 1, 1, 0}

@@ -21,40 +21,26 @@ type socket struct {
 
 	conn *websocket.Conn
 
-	isClosed bool
-	msgC     chan Message
+	msgC chan Message
 
 	once sync.Once
-	mux  sync.Mutex
 }
 
 func (s *socket) SendMessage(msg Message) {
-	s.mux.Lock()
-	defer s.mux.Unlock()
-
-	if s.isClosed {
-		return
-	}
-
 	s.msgC <- msg
 }
 
 func (s *socket) Stop() {
 	s.once.Do(func() {
-		s.mux.Lock()
-		defer s.mux.Unlock()
-
-		s.isClosed = true
 		close(s.msgC)
 	})
 }
 
 func InitSocket(conn *websocket.Conn, hub Hub) *socket {
 	var s = socket{
-		conn:     conn,
-		hub:      hub,
-		msgC:     make(chan Message),
-		isClosed: false,
+		conn: conn,
+		hub:  hub,
+		msgC: make(chan Message),
 	}
 
 	return &s

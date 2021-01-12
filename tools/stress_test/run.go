@@ -18,7 +18,7 @@ func run(ctx *cli.Context) error {
 	type Worker struct {
 		Id int
 	}
-	var queueSize = 100
+	var queueSize = ctx.Int("worker")
 	var workerQueue = make(chan Worker, queueSize)
 
 	for i := 0; i < queueSize; i++ {

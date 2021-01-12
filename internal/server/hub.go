@@ -2,7 +2,7 @@ package server
 
 import (
 	"fmt"
-	"sync"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -11,56 +11,61 @@ import (
 )
 
 type Hub struct {
-	mux sync.Mutex
-
-	core    *coreServer
 	key     string
+	core    *coreServer
 	game    game.Game
 	players map[socket.Socket]game.Player
+
+	register   chan socket.Socket
+	unregister chan socket.Socket
+	message    chan socket.Message
 }
 
 func initHub(core *coreServer, key string) *Hub {
-	var hub = Hub{
-		core:    core,
+	var hub = &Hub{
 		key:     key,
+		core:    core,
 		game:    game.InitGame(key),
 		players: make(map[socket.Socket]game.Player),
+
+		register:   make(chan socket.Socket),
+		unregister: make(chan socket.Socket),
+		message:    make(chan socket.Message),
 	}
 
-	return &hub
+	go hub.run()
+
+	return hub
 }
 
 func (hub *Hub) OnMessage(msg socket.Message) {
-	hub.mux.Lock()
-	defer hub.mux.Unlock()
+	hub.message <- msg
+}
 
+func (hub *Hub) OnLeave(s socket.Socket) {
+	hub.unregister <- s
+}
+
+func (hub *Hub) OnEnter(s socket.Socket) {
+	hub.register <- s
+}
+
+func (hub *Hub) onMessage(msg socket.Message) {
 	if msg.Type != socket.MoveMessageType {
 		logrus.Errorf("hub %s: No msg kind case %s", hub.key, msg)
 		return
 	}
 
-	g, err := hub.game.TakeMove(msg.Move)
-
+	var err error
+	hub.game, err = hub.game.TakeMove(msg.Move)
 	if err != nil {
 		logrus.Errorf("hub %s: game error - %s", hub.key, err)
-	} else {
-		hub.game = g
 	}
 
 	hub.broadcast()
-
-	if hub.game.Status != game.Running {
-		for s := range hub.players {
-			s.Stop()
-		}
-		go hub.core.OnLeave(hub)
-	}
 }
 
-func (hub *Hub) OnLeave(s socket.Socket) {
-	hub.mux.Lock()
-	defer hub.mux.Unlock()
-
+func (hub *Hub) onLeave(s socket.Socket) {
 	if _, found := hub.players[s]; !found {
 		return
 	}
@@ -69,10 +74,7 @@ func (hub *Hub) OnLeave(s socket.Socket) {
 	delete(hub.players, s)
 }
 
-func (hub *Hub) OnEnter(s socket.Socket) {
-	hub.mux.Lock()
-	defer hub.mux.Unlock()
-
+func (hub *Hub) onEnter(s socket.Socket) {
 	if len(hub.players) == 2 {
 		logrus.Debugf("hub %s: room is full %s", hub.key, s.GetSocketIPAddress())
 		s.Stop()
@@ -93,7 +95,6 @@ func (hub *Hub) OnEnter(s socket.Socket) {
 
 	go func() {
 		err1, err2 := s.Run()
-
 		if err1 != nil || err2 != nil {
 			logrus.Errorf("Socket run err: %v:%v", err1, err2)
 		}
@@ -107,13 +108,41 @@ func (hub *Hub) OnEnter(s socket.Socket) {
 func (hub *Hub) broadcast() {
 	if len(hub.players) < 2 {
 		var msg = socket.GenerateAnnouncementMsg(fmt.Sprintf("hub %s: wait for players", hub.key))
-		for socket := range hub.players {
-			socket.SendMessage(msg)
+		for s := range hub.players {
+			s.SendMessage(msg)
 		}
 	} else {
 		for s, player := range hub.players {
 			s.SendMessage(socket.GenerateGameMsg(player, hub.game))
 		}
 	}
+}
 
+func (hub *Hub) run() {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	defer func() {
+		go hub.core.OnLeave(hub)
+	}()
+
+	for {
+		select {
+		case s := <-hub.register:
+			hub.onEnter(s)
+		case s := <-hub.unregister:
+			hub.onLeave(s)
+		case msg := <-hub.message:
+			hub.onMessage(msg)
+		case <-ticker.C:
+			if hub.game.Status != game.Running {
+				for s := range hub.players {
+					s.Stop()
+				}
+			}
+			if len(hub.players) == 0 {
+				return
+			}
+		}
+	}
 }

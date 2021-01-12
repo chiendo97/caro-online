@@ -51,8 +51,8 @@ func (core *coreServer) findPlayer(conn *websocket.Conn) bool {
 
 		atomic.AddInt64(&core.idGenerator, 1)
 		var gameId = fmt.Sprintf("%d", core.idGenerator)
-		var hub = initHub(core, gameId)
 
+		var hub = initHub(core, gameId)
 		core.hubs[gameId] = hub
 
 		go func() {
