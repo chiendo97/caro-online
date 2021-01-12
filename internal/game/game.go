@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	defaultWidth  = 20
-	defaultHeight = 20
+	defaultWidth  = 5
+	defaultHeight = 5
 
 	defaultWinLength = 2
 )

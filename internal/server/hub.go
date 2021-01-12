@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 
 	"github.com/chiendo97/caro-online/internal/game"
@@ -21,7 +22,7 @@ type Hub struct {
 	message    chan socket.Message
 }
 
-func initHub(core *coreServer, key string) *Hub {
+func initHubWithConn(core *coreServer, key string, conns ...*websocket.Conn) *Hub {
 	var hub = &Hub{
 		key:     key,
 		core:    core,
@@ -31,6 +32,11 @@ func initHub(core *coreServer, key string) *Hub {
 		register:   make(chan socket.Socket),
 		unregister: make(chan socket.Socket),
 		message:    make(chan socket.Message),
+	}
+
+	for _, conn := range conns {
+		s := socket.InitSocket(conn, hub)
+		hub.onEnter(s)
 	}
 
 	go hub.run()
@@ -119,12 +125,10 @@ func (hub *Hub) broadcast() {
 }
 
 func (hub *Hub) run() {
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
+	defer hub.core.OnLeave(hub)
 
-	defer func() {
-		go hub.core.OnLeave(hub)
-	}()
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
 
 	for {
 		select {

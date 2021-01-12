@@ -3,68 +3,35 @@ package server
 import (
 	"fmt"
 	"sync/atomic"
-	"time"
 
-	"github.com/chiendo97/caro-online/internal/socket"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 )
 
 func (core *coreServer) FindGame(conn *websocket.Conn) {
 	exporterCounter.WithLabelValues("FindGame").Inc()
-
-	core.mux.Lock()
-	defer core.mux.Unlock()
-
-	logrus.Infof("core: socket (%s) find game", conn.RemoteAddr())
-
-	core.players[conn] = true
-
-	go func() {
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
-
-		for range ticker.C {
-			if found := core.findPlayer(conn); !found {
-				continue
-			}
-			break
-		}
-	}()
+	core.playerC <- conn
 }
 
-func (core *coreServer) findPlayer(conn *websocket.Conn) bool {
-	core.mux.Lock()
-	defer core.mux.Unlock()
+func (core *coreServer) findGame() {
+	var playerQueue = make([]*websocket.Conn, 0, 2)
+	for player := range core.playerC {
+		playerQueue = append(playerQueue, player)
+		if len(playerQueue) == 2 {
+			var (
+				player1 = playerQueue[0]
+				player2 = playerQueue[1]
+				gameId  = fmt.Sprintf("%d", atomic.AddInt64(&core.idGenerator, 1))
+			)
 
-	if _, found := core.players[conn]; !found {
-		return true
-	}
+			core.mux.Lock()
+			var hub = initHubWithConn(core, gameId, player1, player2)
+			core.hubs[gameId] = hub
+			core.mux.Unlock()
 
-	for player := range core.players {
-		if conn == player {
-			continue
+			logrus.Infof("core: create hub (%s)", gameId)
+
+			playerQueue = playerQueue[:0]
 		}
-
-		logrus.Debugf("Match: %v=%v", conn.RemoteAddr(), player.RemoteAddr())
-
-		delete(core.players, conn)
-		delete(core.players, player)
-
-		atomic.AddInt64(&core.idGenerator, 1)
-		var gameId = fmt.Sprintf("%d", core.idGenerator)
-
-		var hub = initHub(core, gameId)
-		core.hubs[gameId] = hub
-
-		go func() {
-			hub.OnEnter(socket.InitSocket(conn, hub))
-			hub.OnEnter(socket.InitSocket(player, hub))
-		}()
-
-		logrus.Infof("core: socket (%s) create hub (%s)", conn.RemoteAddr(), gameId)
-		return true
 	}
-
-	return false
 }
