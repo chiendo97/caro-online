@@ -6,9 +6,11 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 
-	"github.com/chiendo97/caro-online/internal/server"
 	"github.com/gorilla/websocket"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
+
+	"github.com/chiendo97/caro-online/internal/server"
 )
 
 type service struct {
@@ -31,6 +33,9 @@ func (s *service) buildAPI() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Welcome to caro online. Please come to https://github.com/chiendo97/caro-online for introduction")
 	})
+
+	http.Handle("/metrics", promhttp.Handler())
+
 	http.HandleFunc("/create_hub", func(w http.ResponseWriter, r *http.Request) {
 		conn, _ := s.upgrader.Upgrade(w, r, nil)
 

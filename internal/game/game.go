@@ -5,10 +5,10 @@ import (
 )
 
 const (
-	defaultWidth  = 20
-	defaultHeight = 20
+	defaultWidth  = 5
+	defaultHeight = 5
 
-	defaultWinLength = 5
+	defaultWinLength = 2
 )
 
 var row = []int{-1, -1, -1, 0, 1, 1, 1, 0}

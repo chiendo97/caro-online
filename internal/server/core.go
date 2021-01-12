@@ -13,18 +13,19 @@ type CoreServer interface {
 }
 
 type coreServer struct {
-	mux     sync.Mutex
-	hubs    map[string]*Hub
-	players map[*websocket.Conn]bool
-
 	idGenerator int64
+	mux         sync.Mutex
+	hubs        map[string]*Hub
+	playerC     chan *websocket.Conn
 }
 
 func InitCoreServer() CoreServer {
 	var core = &coreServer{
 		hubs:    make(map[string]*Hub),
-		players: make(map[*websocket.Conn]bool),
+		playerC: make(chan *websocket.Conn),
 	}
+
+	go core.findGame()
 
 	return core
 }

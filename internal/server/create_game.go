@@ -6,11 +6,11 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
-
-	"github.com/chiendo97/caro-online/internal/socket"
 )
 
 func (core *coreServer) CreateGame(conn *websocket.Conn) {
+	exporterCounter.WithLabelValues("CreateGame").Inc()
+
 	core.mux.Lock()
 	defer core.mux.Unlock()
 
@@ -22,12 +22,8 @@ func (core *coreServer) CreateGame(conn *websocket.Conn) {
 		return
 	}
 
-	var hub = initHub(core, gameId)
+	var hub = initHubWithConn(core, gameId, conn)
 	core.hubs[gameId] = hub
-
-	go func() {
-		hub.OnEnter(socket.InitSocket(conn, hub))
-	}()
 
 	logrus.Infof("core: socket (%s) create hub (%s)", conn.RemoteAddr(), gameId)
 }
