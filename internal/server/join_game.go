@@ -8,6 +8,7 @@ import (
 )
 
 func (core *coreServer) JoinGame(conn *websocket.Conn, gameId string) {
+	exporterCounter.WithLabelValues("JoinGame").Inc()
 
 	core.mux.Lock()
 	defer core.mux.Unlock()

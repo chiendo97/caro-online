@@ -3,6 +3,7 @@ package socket
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
@@ -79,7 +80,10 @@ func (c *socket) write() error {
 	}()
 
 	for msg := range c.msgC {
+		exporterCounter.WithLabelValues("write").Inc()
+		start := time.Now()
 		err := c.conn.WriteJSON(msg)
+		exporterLatency.WithLabelValues("write").Observe(float64(time.Since(start).Milliseconds()))
 		if err != nil {
 			e, _ := err.(*websocket.CloseError)
 			if e != nil {

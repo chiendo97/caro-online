@@ -11,6 +11,8 @@ import (
 )
 
 func (core *coreServer) FindGame(conn *websocket.Conn) {
+	exporterCounter.WithLabelValues("FindGame").Inc()
+
 	core.mux.Lock()
 	defer core.mux.Unlock()
 
