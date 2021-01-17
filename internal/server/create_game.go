@@ -22,7 +22,7 @@ func (core *coreServer) CreateGame(conn *websocket.Conn) {
 		return
 	}
 
-	var hub = initHubWithConn(core, gameId, conn)
+	var hub = newHub(core, gameId, conn)
 	core.hubs[gameId] = hub
 
 	logrus.Infof("core: socket (%s) create hub (%s)", conn.RemoteAddr(), gameId)

@@ -21,13 +21,13 @@ type Hub struct {
 	bot    game.Bot
 }
 
-// InitHub init new client hub
-func InitHub(c *websocket.Conn, bot game.Bot) *Hub {
+// NewHub init new client hub
+func NewHub(c *websocket.Conn, bot game.Bot) *Hub {
 	var hub = Hub{
 		bot: bot,
 	}
 
-	hub.socket = socket.InitSocket(c, &hub)
+	hub.socket = socket.NewSocket(c, &hub)
 
 	return &hub
 }
@@ -42,10 +42,10 @@ func (hub *Hub) OnMessage(msg socket.Message) {
 	defer hub.mux.Unlock()
 
 	switch msg.Type {
-	case socket.AnnouncementMessageType:
-		logrus.Debugf("Server: %s\n", msg.Announcement)
+	case socket.Announce:
+		logrus.Debugf("Server: %s", msg.Announce)
 
-	case socket.GameMessageType:
+	case socket.Game:
 		hub.player = msg.Player
 		hub.game = msg.Game
 
@@ -61,7 +61,7 @@ func (hub *Hub) OnMessage(msg socket.Message) {
 					logrus.Errorf("GetMove err: %v", err)
 				}
 
-				msg := socket.GenerateMoveMsg(move)
+				msg := socket.NewMoveMsg(move)
 				hub.socket.SendMessage(msg)
 			} else {
 				logrus.Debugf("Enemy turn.")

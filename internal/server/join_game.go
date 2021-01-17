@@ -22,5 +22,5 @@ func (core *coreServer) JoinGame(conn *websocket.Conn, gameId string) {
 		return
 	}
 
-	hub.OnEnter(socket.InitSocket(conn, hub))
+	hub.OnEnter(socket.NewSocket(conn, hub))
 }

@@ -43,7 +43,7 @@ func run(ctx *cli.Context) error {
 					return
 				}
 
-				hub := client.InitHub(c, &game.RandomBot{})
+				hub := client.NewHub(c, &game.RandomBot{})
 				if err := hub.Run(); err != nil {
 					logrus.Errorf("Hub run err: %v", err)
 				}

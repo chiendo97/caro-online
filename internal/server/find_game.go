@@ -18,14 +18,10 @@ func (core *coreServer) findGame() {
 	for player := range core.playerC {
 		playerQueue = append(playerQueue, player)
 		if len(playerQueue) == 2 {
-			var (
-				player1 = playerQueue[0]
-				player2 = playerQueue[1]
-				gameId  = fmt.Sprintf("%d", atomic.AddInt64(&core.idGenerator, 1))
-			)
+			var gameId = fmt.Sprintf("%d", atomic.AddInt64(&core.idGenerator, 1))
+			var hub = newHub(core, gameId, playerQueue...)
 
 			core.mux.Lock()
-			var hub = initHubWithConn(core, gameId, player1, player2)
 			core.hubs[gameId] = hub
 			core.mux.Unlock()
 

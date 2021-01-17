@@ -22,7 +22,7 @@ type Hub struct {
 	message    chan socket.Message
 }
 
-func initHubWithConn(core *coreServer, key string, conns ...*websocket.Conn) *Hub {
+func newHub(core *coreServer, key string, conns ...*websocket.Conn) *Hub {
 	var hub = &Hub{
 		key:     key,
 		core:    core,
@@ -35,7 +35,7 @@ func initHubWithConn(core *coreServer, key string, conns ...*websocket.Conn) *Hu
 	}
 
 	for _, conn := range conns {
-		s := socket.InitSocket(conn, hub)
+		s := socket.NewSocket(conn, hub)
 		hub.onEnter(s)
 	}
 
@@ -57,7 +57,7 @@ func (hub *Hub) OnEnter(s socket.Socket) {
 }
 
 func (hub *Hub) onMessage(msg socket.Message) {
-	if msg.Type != socket.MoveMessageType {
+	if msg.Type != socket.Move {
 		logrus.Errorf("hub %s: No msg kind case %s", hub.key, msg)
 		return
 	}
@@ -113,13 +113,13 @@ func (hub *Hub) onEnter(s socket.Socket) {
 
 func (hub *Hub) broadcast() {
 	if len(hub.players) < 2 {
-		var msg = socket.GenerateAnnouncementMsg(fmt.Sprintf("hub %s: wait for players", hub.key))
+		var msg = socket.NewAnnouncementMsg(fmt.Sprintf("hub %s: wait for players", hub.key))
 		for s := range hub.players {
 			s.SendMessage(msg)
 		}
 	} else {
 		for s, player := range hub.players {
-			s.SendMessage(socket.GenerateGameMsg(player, hub.game))
+			s.SendMessage(socket.NewGameMsg(player, hub.game))
 		}
 	}
 }
