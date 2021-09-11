@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
@@ -23,7 +22,7 @@ type Hub struct {
 }
 
 func newHub(core *coreServer, key string, conns ...*websocket.Conn) *Hub {
-	var hub = &Hub{
+	hub := &Hub{
 		key:     key,
 		core:    core,
 		game:    game.InitGame(key),
@@ -82,12 +81,12 @@ func (hub *Hub) onLeave(s socket.Socket) {
 
 func (hub *Hub) onEnter(s socket.Socket) {
 	if len(hub.players) == 2 {
-		logrus.Debugf("hub %s: room is full %s", hub.key, s.GetSocketIPAddress())
+		logrus.Debugf("hub %s: room is full %s", hub.key, s.Address())
 		s.Stop()
 		return
 	}
 
-	var player = game.XPlayer
+	player := game.XPlayer
 	for _, otherId := range hub.players {
 		switch otherId {
 		case game.XPlayer:
@@ -108,12 +107,12 @@ func (hub *Hub) onEnter(s socket.Socket) {
 
 	hub.broadcast()
 
-	logrus.Debugf("hub %s: take new socket %s as player %d", hub.key, s.GetSocketIPAddress(), player)
+	logrus.Debugf("hub %s: take new socket %s as player %d", hub.key, s.Address(), player)
 }
 
 func (hub *Hub) broadcast() {
 	if len(hub.players) < 2 {
-		var msg = socket.NewAnnouncementMsg(fmt.Sprintf("hub %s: wait for players", hub.key))
+		msg := socket.NewAnnouncementMsg(fmt.Sprintf("hub %s: wait for players", hub.key))
 		for s := range hub.players {
 			s.SendMessage(msg)
 		}
@@ -127,9 +126,6 @@ func (hub *Hub) broadcast() {
 func (hub *Hub) run() {
 	defer hub.core.OnLeave(hub)
 
-	ticker := time.NewTicker(2 * time.Second)
-	defer ticker.Stop()
-
 	for {
 		select {
 		case s := <-hub.register:
@@ -138,14 +134,12 @@ func (hub *Hub) run() {
 			hub.onLeave(s)
 		case msg := <-hub.message:
 			hub.onMessage(msg)
-		case <-ticker.C:
-			if hub.game.Status != game.Running {
-				for s := range hub.players {
-					s.Stop()
-				}
-			}
-			if len(hub.players) == 0 {
-				return
+		}
+		if len(hub.players) == 0 {
+			return
+		} else if hub.game.Status != game.Running {
+			for s := range hub.players {
+				s.Stop()
 			}
 		}
 	}

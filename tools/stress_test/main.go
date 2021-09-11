@@ -11,11 +11,7 @@ func main() {
 	app := cmd.App{
 		Action: run,
 		Flags: []cli.Flag{
-			&cli.IntFlag{
-				Name:    "worker",
-				Aliases: []string{"w"},
-				Value:   100,
-			},
+			&cli.IntFlag{Name: "worker", Aliases: []string{"w"}, Value: 100},
 		},
 	}
 

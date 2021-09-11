@@ -12,12 +12,11 @@ import (
 )
 
 func run(c *cli.Context) error {
+	core := server.InitCoreServer()
 
-	var core = server.InitCoreServer()
+	service := api.InitService(core, c.Int("port"))
 
-	var service = api.InitService(core, c.Int("port"))
-
-	var errC = make(chan error)
+	errC := make(chan error)
 
 	go func() {
 		err := service.ListenAndServe(c.Int("port"))

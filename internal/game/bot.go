@@ -13,7 +13,7 @@ type RandomBot struct{}
 
 func (bot *RandomBot) GetMove(p Player, g Game) (Move, error) {
 	var x, y int
-	var count = 0
+	count := 0
 	for {
 		if count == g.Board.Height*g.Board.Width {
 			return Move{}, fmt.Errorf("Can not find any move")

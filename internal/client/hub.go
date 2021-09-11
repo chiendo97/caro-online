@@ -23,13 +23,10 @@ type Hub struct {
 
 // NewHub init new client hub
 func NewHub(c *websocket.Conn, bot game.Bot) *Hub {
-	var hub = Hub{
-		bot: bot,
-	}
+	hub := &Hub{bot: bot}
+	hub.socket = socket.NewSocket(c, hub)
 
-	hub.socket = socket.NewSocket(c, &hub)
-
-	return &hub
+	return hub
 }
 
 func (hub *Hub) OnLeave(s socket.Socket) {
@@ -37,7 +34,6 @@ func (hub *Hub) OnLeave(s socket.Socket) {
 }
 
 func (hub *Hub) OnMessage(msg socket.Message) {
-
 	hub.mux.Lock()
 	defer hub.mux.Unlock()
 
@@ -72,20 +68,18 @@ func (hub *Hub) OnMessage(msg socket.Message) {
 				if hub.player == hub.game.Status.GetPlayer() {
 					logrus.Debugf("You won !!!")
 				} else {
-					logrus.Debugf("Your opponent won, good luck next !!")
+					logrus.Debugf("Your opponent won, good luck next match!!")
 				}
 			case game.Tie:
 				logrus.Debugf("Game tie!!")
 			}
 		}
-
 	default:
 		logrus.Warn("Invalid msg:", msg)
 	}
 }
 
 func (hub *Hub) Run() error {
-
 	err1, err2 := hub.socket.Run()
 	if err1 != nil || err2 != nil {
 		return fmt.Errorf("%v:%v", err1, err2)

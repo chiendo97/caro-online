@@ -10,10 +10,10 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/chiendo97/caro-online/internal/client"
+	"github.com/chiendo97/caro-online/internal/game"
 )
 
 func run(ctx *cli.Context) error {
-
 	var (
 		addr = ctx.String("addr")
 		port = ctx.Int("port")
@@ -44,7 +44,7 @@ func run(ctx *cli.Context) error {
 		return fmt.Errorf("Dial error: %v", err)
 	}
 
-	hub := client.NewHub(c, &client.Player{})
+	hub := client.NewHub(c, &game.RandomBot{})
 
 	errC := make(chan error)
 

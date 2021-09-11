@@ -31,24 +31,39 @@ func InitService(core server.CoreServer, port int) *service {
 
 func (s *service) buildAPI() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "Welcome to caro online. Please come to https://github.com/chiendo97/caro-online for introduction")
+		fmt.Fprint(
+			w,
+			"Welcome to caro online. Please come to https://github.com/chiendo97/caro-online for introduction",
+		)
 	})
 
 	http.Handle("/metrics", promhttp.Handler())
 
 	http.HandleFunc("/create_hub", func(w http.ResponseWriter, r *http.Request) {
-		conn, _ := s.upgrader.Upgrade(w, r, nil)
+		conn, err := s.upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		s.core.CreateGame(conn)
 	})
 	http.HandleFunc("/join_hub", func(w http.ResponseWriter, r *http.Request) {
-		conn, _ := s.upgrader.Upgrade(w, r, nil)
+		conn, err := s.upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-		var gameID = r.URL.Query().Get("hub")
+		gameID := r.URL.Query().Get("hub")
 		s.core.JoinGame(conn, gameID)
 	})
 	http.HandleFunc("/find_hub", func(w http.ResponseWriter, r *http.Request) {
-		conn, _ := s.upgrader.Upgrade(w, r, nil)
+		conn, err := s.upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		s.core.FindGame(conn)
 	})

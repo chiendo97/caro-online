@@ -15,14 +15,14 @@ func (core *coreServer) CreateGame(conn *websocket.Conn) {
 	defer core.mux.Unlock()
 
 	atomic.AddInt64(&core.idGenerator, 1)
-	var gameId = fmt.Sprintf("%d", core.idGenerator)
+	gameId := fmt.Sprintf("%d", core.idGenerator)
 
 	if _, found := core.hubs[gameId]; found {
 		logrus.Error("Key duplicate: ", gameId, conn.RemoteAddr())
 		return
 	}
 
-	var hub = newHub(core, gameId, conn)
+	hub := newHub(core, gameId, conn)
 	core.hubs[gameId] = hub
 
 	logrus.Infof("core: socket (%s) create hub (%s)", conn.RemoteAddr(), gameId)

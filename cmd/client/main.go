@@ -8,7 +8,6 @@ import (
 )
 
 func main() {
-
 	app := cmd.App{
 		Name:  "caro-online",
 		Usage: "run caro-online client",

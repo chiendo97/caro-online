@@ -8,7 +8,6 @@ type Board struct {
 }
 
 func initBoard(w, h int) Board {
-
 	b := Board{
 		Width:  w,
 		Height: h,
@@ -27,7 +26,6 @@ func initBoard(w, h int) Board {
 }
 
 func (b Board) isValidPosition(x, y int) bool {
-
 	if x < 0 || x >= b.Width {
 		return false
 	}
@@ -39,17 +37,16 @@ func (b Board) isValidPosition(x, y int) bool {
 }
 
 func (b Board) isWin(x, y int) bool {
-
 	if b.Cells[x][y].isFill() == false {
 		return false
 	}
 
 	for i := 0; i < 8; i++ {
 
-		var u = x
-		var v = y
+		u := x
+		v := y
 
-		var isWinner = true
+		isWinner := true
 
 		for j := 1; j < defaultWinLength; j++ {
 			u = u + row[i]
@@ -80,8 +77,7 @@ func (b Board) isWin(x, y int) bool {
 }
 
 func (b Board) getStatus() Status {
-
-	var anyAvaiableMove = false
+	anyAvaiableMove := false
 
 	for i := 0; i < b.Width; i++ {
 		for j := 0; j < b.Height; j++ {
@@ -92,7 +88,7 @@ func (b Board) getStatus() Status {
 
 			if b.Cells[i][j].isFill() {
 
-				var winner = b.isWin(i, j)
+				winner := b.isWin(i, j)
 
 				if winner {
 					switch b.Cells[i][j].Player {

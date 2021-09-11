@@ -14,12 +14,12 @@ func (core *coreServer) FindGame(conn *websocket.Conn) {
 }
 
 func (core *coreServer) findGame() {
-	var playerQueue = make([]*websocket.Conn, 0, 2)
+	playerQueue := make([]*websocket.Conn, 0, 2)
 	for player := range core.playerC {
 		playerQueue = append(playerQueue, player)
 		if len(playerQueue) == 2 {
-			var gameId = fmt.Sprintf("%d", atomic.AddInt64(&core.idGenerator, 1))
-			var hub = newHub(core, gameId, playerQueue...)
+			gameId := fmt.Sprintf("%d", atomic.AddInt64(&core.idGenerator, 1))
+			hub := newHub(core, gameId, playerQueue...)
 
 			core.mux.Lock()
 			core.hubs[gameId] = hub

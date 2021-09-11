@@ -14,7 +14,6 @@ type Player struct{}
 var reader = bufio.NewReader(os.Stdin)
 
 func (play *Player) GetMove(p game.Player, g game.Game) (game.Move, error) {
-
 	for {
 		text, err := reader.ReadString('\n')
 		if err != nil {
@@ -45,5 +44,4 @@ func (play *Player) GetMove(p game.Player, g game.Game) (game.Move, error) {
 			Player: p,
 		}, nil
 	}
-
 }

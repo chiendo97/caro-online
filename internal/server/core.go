@@ -20,7 +20,7 @@ type coreServer struct {
 }
 
 func InitCoreServer() CoreServer {
-	var core = &coreServer{
+	core := &coreServer{
 		hubs:    make(map[string]*Hub),
 		playerC: make(chan *websocket.Conn),
 	}

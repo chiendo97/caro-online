@@ -20,16 +20,14 @@ type App struct {
 
 var commonFlags = []cli.Flag{
 	&cli.StringFlag{
-		Name:        "log",
-		Aliases:     []string{"l"},
-		Usage:       "debug | info | error | warm",
-		DefaultText: "info",
-		Value:       "info",
+		Name:    "log",
+		Aliases: []string{"l"},
+		Usage:   "debug | info | error | warm",
+		Value:   "debug",
 	},
 }
 
 func RunApp(a App) error {
-
 	flags := append(commonFlags, a.Flags...)
 
 	app := &cli.App{
@@ -44,7 +42,6 @@ func RunApp(a App) error {
 
 func run(runFunc cli.ActionFunc) cli.ActionFunc {
 	return func(c *cli.Context) error {
-
 		if err := initLog(c.String("log")); err != nil {
 			return err
 		}
@@ -58,7 +55,6 @@ func run(runFunc cli.ActionFunc) cli.ActionFunc {
 }
 
 func initLog(levelStr string) error {
-
 	logrus.SetFormatter(
 		&logrus.TextFormatter{
 			CallerPrettyfier: func(f *runtime.Frame) (string, string) {

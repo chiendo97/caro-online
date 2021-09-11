@@ -11,8 +11,10 @@ const (
 	defaultWinLength = 2
 )
 
-var row = []int{-1, -1, -1, 0, 1, 1, 1, 0}
-var col = []int{-1, 0, 1, 1, 1, 0, -1, -1}
+var (
+	row = []int{-1, -1, -1, 0, 1, 1, 1, 0}
+	col = []int{-1, 0, 1, 1, 1, 0, -1, -1}
+)
 
 type Game struct {
 	GameID string
@@ -28,7 +30,7 @@ type Move struct {
 }
 
 func InitGame(gameId string) Game {
-	var game = Game{
+	game := Game{
 		GameID: gameId,
 		Board:  initBoard(defaultWidth, defaultHeight),
 		Status: Running,
@@ -43,7 +45,7 @@ func (g Game) String() string {
 }
 
 func (g Game) Copy() Game {
-	var newGame = Game{
+	newGame := Game{
 		GameID: g.GameID,
 		Status: g.Status,
 		Player: g.Player,
@@ -72,8 +74,7 @@ func (g Game) IsValidMove(move Move) error {
 }
 
 func (g Game) TakeMove(move Move) (Game, error) {
-
-	var board = g.Board
+	board := g.Board
 
 	x := move.X
 	y := move.Y
@@ -94,10 +95,9 @@ func (g Game) TakeMove(move Move) (Game, error) {
 }
 
 func (g Game) Render() {
-
 	fmt.Printf("Game: %s\n\n", g.GameID)
 
-	var b = g.Board
+	b := g.Board
 
 	for i := 0; i < b.Width; i++ {
 		for j := 0; j < b.Height; j++ {
