@@ -32,7 +32,8 @@ func run(c *cli.Context) error {
 	select {
 	case err := <-errC:
 		return err
-	case <-interrupt:
+	case sig := <-interrupt:
+		logrus.Infof("Got %v", sig)
 		if err := service.Shutdown(); err != nil {
 			logrus.Errorf("Shutdown server error: %v", err)
 		}

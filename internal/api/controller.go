@@ -38,6 +38,9 @@ func (s *service) buildAPI() {
 	})
 
 	http.Handle("/metrics", promhttp.Handler())
+	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("pong"))
+	})
 
 	http.HandleFunc("/create_hub", func(w http.ResponseWriter, r *http.Request) {
 		conn, err := s.upgrader.Upgrade(w, r, nil)

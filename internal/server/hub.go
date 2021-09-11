@@ -77,6 +77,7 @@ func (hub *Hub) onLeave(s socket.Socket) {
 
 	s.Stop()
 	delete(hub.players, s)
+	exporterGame.WithLabelValues("players").Dec()
 }
 
 func (hub *Hub) onEnter(s socket.Socket) {
@@ -85,6 +86,7 @@ func (hub *Hub) onEnter(s socket.Socket) {
 		s.Stop()
 		return
 	}
+	exporterGame.WithLabelValues("players").Inc()
 
 	player := game.XPlayer
 	for _, otherId := range hub.players {

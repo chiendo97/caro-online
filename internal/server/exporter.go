@@ -9,8 +9,8 @@ var (
 		prometheus.CounterOpts{
 			Namespace: "core",
 			Subsystem: "caro",
-			Name:      "counter",
-			Help:      "counter",
+			Name:      "api",
+			Help:      "api counter",
 		},
 		[]string{"api"},
 	)
@@ -24,11 +24,21 @@ var (
 		},
 		[]string{"api"},
 	)
+	exporterGame = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "core",
+			Subsystem: "caro",
+			Name:      "game",
+			Help:      "game counter",
+		},
+		[]string{"label"},
+	)
 )
 
 func init() {
 	prometheus.MustRegister(
 		exporterCounter,
 		exporterLatency,
+		exporterGame,
 	)
 }

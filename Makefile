@@ -9,18 +9,17 @@ client:
 stress_test:
 	go build -o ./bin/stress_test ./tools/stress_test/*.go
 
-run_server: server
+run_server:
 	./bin/server
 
-run_client: client
+run_client:
 	./bin/client
 
-run_stress_test: stress_test
+run_stress_test:
 	./bin/stress_test
 
 pprof:
-	curl localhost:8080/debug/pprof/heap --output ./bin/heap
-	pprof -http=":8081" ./bin/heap
+	go tool pprof -http ':8081' http://localhost:8080/debug/pprof/profile
 
 clean:
 	@echo "Cleaning up..."
